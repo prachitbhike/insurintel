@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/ingest-facts",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-views",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
