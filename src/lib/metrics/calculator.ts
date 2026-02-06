@@ -8,7 +8,8 @@ export function calculateDerivedMetrics(
   rawMetrics: ParsedMetric[],
   fiscalYear: number,
   fiscalQuarter: number | null,
-  periodType: "annual" | "quarterly"
+  periodType: "annual" | "quarterly",
+  sector?: string
 ): ParsedMetric[] {
   const lookup: MetricMap = {};
   for (const m of rawMetrics) {
@@ -33,39 +34,40 @@ export function calculateDerivedMetrics(
     form: "derived",
   };
 
-  // Loss Ratio = Losses Incurred / Net Premiums Earned
-  if (lookup.losses_incurred != null && lookup.net_premiums_earned != null && lookup.net_premiums_earned !== 0) {
-    derived.push({
-      ...base,
-      metric_name: "loss_ratio",
-      value: (lookup.losses_incurred / lookup.net_premiums_earned) * 100,
-      unit: "percent",
-    });
-  }
+  // Loss Ratio, Expense Ratio, Combined Ratio — only for P&C and Reinsurance
+  const uwSectors = ["P&C", "Reinsurance"];
+  if (!sector || uwSectors.includes(sector)) {
+    if (lookup.losses_incurred != null && lookup.net_premiums_earned != null && lookup.net_premiums_earned !== 0) {
+      derived.push({
+        ...base,
+        metric_name: "loss_ratio",
+        value: (lookup.losses_incurred / lookup.net_premiums_earned) * 100,
+        unit: "percent",
+      });
+    }
 
-  // Expense Ratio = (Acquisition Costs + Underwriting Expenses) / Net Premiums Earned
-  const acqCosts = lookup.acquisition_costs ?? 0;
-  const uwExpenses = lookup.underwriting_expenses ?? 0;
-  const totalExpenses = acqCosts + uwExpenses;
-  if (totalExpenses > 0 && lookup.net_premiums_earned != null && lookup.net_premiums_earned !== 0) {
-    derived.push({
-      ...base,
-      metric_name: "expense_ratio",
-      value: (totalExpenses / lookup.net_premiums_earned) * 100,
-      unit: "percent",
-    });
-  }
+    const acqCosts = lookup.acquisition_costs ?? 0;
+    const uwExpenses = lookup.underwriting_expenses ?? 0;
+    const totalExpenses = acqCosts + uwExpenses;
+    if (totalExpenses > 0 && lookup.net_premiums_earned != null && lookup.net_premiums_earned !== 0) {
+      derived.push({
+        ...base,
+        metric_name: "expense_ratio",
+        value: (totalExpenses / lookup.net_premiums_earned) * 100,
+        unit: "percent",
+      });
+    }
 
-  // Combined Ratio = Loss Ratio + Expense Ratio
-  const lossRatio = derived.find((d) => d.metric_name === "loss_ratio")?.value;
-  const expenseRatio = derived.find((d) => d.metric_name === "expense_ratio")?.value;
-  if (lossRatio != null && expenseRatio != null) {
-    derived.push({
-      ...base,
-      metric_name: "combined_ratio",
-      value: lossRatio + expenseRatio,
-      unit: "percent",
-    });
+    const lossRatio = derived.find((d) => d.metric_name === "loss_ratio")?.value;
+    const expenseRatio = derived.find((d) => d.metric_name === "expense_ratio")?.value;
+    if (lossRatio != null && expenseRatio != null) {
+      derived.push({
+        ...base,
+        metric_name: "combined_ratio",
+        value: lossRatio + expenseRatio,
+        unit: "percent",
+      });
+    }
   }
 
   // ROE = Net Income / Stockholders' Equity
@@ -108,14 +110,16 @@ export function calculateDerivedMetrics(
     });
   }
 
-  // Medical Loss Ratio = Medical Claims Expense / Revenue
-  if (lookup.medical_claims_expense != null && lookup.revenue != null && lookup.revenue !== 0) {
-    derived.push({
-      ...base,
-      metric_name: "medical_loss_ratio",
-      value: (lookup.medical_claims_expense / lookup.revenue) * 100,
-      unit: "percent",
-    });
+  // Medical Loss Ratio = Medical Claims Expense / Revenue — only for Health
+  if (!sector || sector === "Health") {
+    if (lookup.medical_claims_expense != null && lookup.revenue != null && lookup.revenue !== 0) {
+      derived.push({
+        ...base,
+        metric_name: "medical_loss_ratio",
+        value: (lookup.medical_claims_expense / lookup.revenue) * 100,
+        unit: "percent",
+      });
+    }
   }
 
   return derived;

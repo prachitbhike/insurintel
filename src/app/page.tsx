@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getSectorOverviews } from "@/lib/queries/sectors";
+import { getSectorOverviews, getSectorAverages } from "@/lib/queries/sectors";
+import { getCompaniesBySector } from "@/lib/queries/companies";
 import { getIndustryTimeseries } from "@/lib/queries/metrics";
 import { HeroBenchmarks } from "@/components/dashboard/hero-benchmarks";
 import { IndustryTrendCharts } from "@/components/dashboard/industry-trend-charts";
@@ -12,7 +14,12 @@ import {
   BenchmarkStrip,
   type BenchmarkEntry,
 } from "@/components/dashboard/benchmark-strip";
-import { SECTORS } from "@/lib/data/sectors";
+import { SectorToggle } from "@/components/dashboard/sector-toggle";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { SectorTrendCharts, type SectorTrendData } from "@/components/sectors/sector-trend-charts";
+import { CompaniesTable } from "@/components/companies/companies-table";
+import { SECTORS, getSectorBySlug } from "@/lib/data/sectors";
+import { type CompanyListItem } from "@/types/company";
 import { type LatestMetric } from "@/types/database";
 import {
   aggregateIndustryByYear,
@@ -45,7 +52,6 @@ async function getOverviewData() {
 
     const latestMetrics = (latestMetricsRes.data ?? []) as LatestMetric[];
 
-    // --- Hero benchmarks ---
     const premiums = latestMetrics.filter(
       (m) => m.metric_name === "net_premiums_earned"
     );
@@ -69,7 +75,6 @@ async function getOverviewData() {
 
     const totalCompanies = new Set(latestMetrics.map((m) => m.company_id)).size;
 
-    // --- Industry trend charts ---
     const efficiencyData = aggregateIndustryByYear(industryTimeseries, [
       "combined_ratio",
       "expense_ratio",
@@ -79,13 +84,11 @@ async function getOverviewData() {
       "roe",
     ]);
 
-    // --- Sector sparklines ---
     const sectorExpenseTrends = aggregateSectorByYear(
       industryTimeseries,
       "expense_ratio"
     );
 
-    // --- Disruption targets (worst combined ratio first) ---
     const disruptionTargets: DisruptionTarget[] = [...combinedRatios]
       .sort((a, b) => b.metric_value - a.metric_value)
       .slice(0, 10)
@@ -111,7 +114,6 @@ async function getOverviewData() {
         };
       });
 
-    // --- Benchmark targets (best-in-class) ---
     const bestCombined = [...combinedRatios].sort(
       (a, b) => a.metric_value - b.metric_value
     )[0];
@@ -184,74 +186,247 @@ async function getOverviewData() {
   }
 }
 
-export default async function HomePage() {
-  const data = await getOverviewData();
+async function getSectorDetailData(slug: string) {
+  const sector = getSectorBySlug(slug);
+  if (!sector) return null;
+
+  let averages: Record<string, number> = {};
+  let trendData: SectorTrendData = {};
+  let tickers: string[] = [];
+  let tableData: CompanyListItem[] = [];
+
+  try {
+    const supabase = await createClient();
+    const [sectorAvgs, companies, metricsRes] = await Promise.all([
+      getSectorAverages(supabase, sector.name),
+      getCompaniesBySector(supabase, sector.name),
+      supabase
+        .from("mv_latest_metrics")
+        .select("*")
+        .eq("sector", sector.name),
+    ]);
+
+    for (const avg of sectorAvgs) {
+      averages[avg.metric_name] = avg.avg_value;
+    }
+
+    // Fetch timeseries for all companies in this sector
+    const companyIds = companies.map((c) => c.id);
+    tickers = companies.map((c) => c.ticker).sort();
+
+    const { data: tsRows } = await supabase
+      .from("mv_metric_timeseries")
+      .select("company_id, ticker, metric_name, metric_value, fiscal_year")
+      .in("company_id", companyIds)
+      .in("metric_name", sector.key_metrics)
+      .eq("period_type", "annual")
+      .order("fiscal_year", { ascending: true });
+
+    // Build trend data: { metric -> [{ year, TICKER1: val, TICKER2: val, ... }] }
+    const metricYearMap = new Map<string, Map<number, Map<string, number>>>();
+    for (const row of tsRows ?? []) {
+      if (!metricYearMap.has(row.metric_name)) {
+        metricYearMap.set(row.metric_name, new Map());
+      }
+      const yearMap = metricYearMap.get(row.metric_name)!;
+      if (!yearMap.has(row.fiscal_year)) {
+        yearMap.set(row.fiscal_year, new Map());
+      }
+      yearMap.get(row.fiscal_year)!.set(row.ticker, row.metric_value);
+    }
+
+    for (const [metric, yearMap] of metricYearMap) {
+      const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
+      trendData[metric] = years.map((year) => {
+        const tickerVals = yearMap.get(year)!;
+        const entry: Record<string, number | null> = { year };
+        for (const t of tickers) {
+          entry[t] = tickerVals.get(t) ?? null;
+        }
+        return entry as { year: number; [ticker: string]: number | null };
+      });
+    }
+
+    const metrics = (metricsRes.data ?? []) as LatestMetric[];
+    const metricsByCompany = new Map<string, Map<string, number>>();
+    for (const m of metrics) {
+      if (!metricsByCompany.has(m.company_id)) {
+        metricsByCompany.set(m.company_id, new Map());
+      }
+      metricsByCompany.get(m.company_id)!.set(m.metric_name, m.metric_value);
+    }
+
+    tableData = companies.map((c) => {
+      const cm = metricsByCompany.get(c.id);
+      return {
+        id: c.id,
+        ticker: c.ticker,
+        name: c.name,
+        sector: c.sector,
+        sub_sector: c.sub_sector,
+        combined_ratio: cm?.get("combined_ratio") ?? null,
+        roe: cm?.get("roe") ?? null,
+        net_premiums_earned: cm?.get("net_premiums_earned") ?? null,
+        premium_growth_yoy: cm?.get("premium_growth_yoy") ?? null,
+        eps: cm?.get("eps") ?? null,
+        sparkline_data: [],
+      };
+    });
+  } catch {
+    // Gracefully handle
+  }
+
+  return { sector, averages, trendData, tickers, tableData };
+}
+
+interface HomePageProps {
+  searchParams: Promise<{ sector?: string }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const { sector: sectorSlug } = await searchParams;
+
+  // Validate sector slug — fall back to industry view on invalid
+  const sectorDetail = sectorSlug ? await getSectorDetailData(sectorSlug) : null;
+  const isIndustryView = !sectorDetail;
+
+  // Only fetch overview data when showing industry view
+  const overviewData = isIndustryView ? await getOverviewData() : null;
 
   return (
-    <div className="container space-y-10 px-4 py-8 md:px-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Insurance Industry Dashboard
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Market intelligence for AI insurance founders — opportunity sizing,
-          benchmarks & disruption targets.
-        </p>
-      </div>
-
-      {/* Section 1: Hero Benchmarks */}
-      <HeroBenchmarks
-        totalPremium={data.totalPremium}
-        avgCombinedRatio={data.avgCombinedRatio}
-        avgExpenseRatio={data.avgExpenseRatio}
-        trackedCompanies={data.totalCompanies}
-      />
-
-      {/* Section 2: Industry Trend Charts */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Industry Trends</h2>
-        <IndustryTrendCharts
-          efficiencyData={data.efficiencyData}
-          growthData={data.growthData}
-        />
-      </div>
-
-      {/* Section 3: Sector Opportunity Cards */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Sector Opportunities</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {SECTORS.map((sector) => {
-            const overview = data.sectorOverviews.find(
-              (s) => s.sector === sector.name
-            );
-            return (
-              <SectorOpportunityCard
-                key={sector.slug}
-                sector={sector.name}
-                label={sector.label}
-                companyCount={overview?.companyCount ?? 0}
-                avgExpenseRatio={
-                  overview?.averages["expense_ratio"] ?? null
-                }
-                premiumGrowth={
-                  overview?.averages["premium_growth_yoy"] ?? null
-                }
-                expenseRatioTrend={
-                  data.sectorExpenseTrends[sector.name] ?? []
-                }
-                color={sector.color.replace("bg-", "hsl(var(--chart-1))")}
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <section className="relative border-b border-border/50 bg-gradient-to-b from-primary/[0.03] to-transparent">
+        <div className="container px-4 pt-10 pb-8 md:px-6 md:pt-14 md:pb-10">
+          <div className="max-w-2xl">
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary/60 mb-3">
+              {sectorDetail ? sectorDetail.sector.label : "Market Intelligence"}
+            </p>
+            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+              {sectorDetail
+                ? sectorDetail.sector.label
+                : "Insurance Industry Dashboard"}
+            </h1>
+            <p className="mt-2 text-base text-muted-foreground leading-relaxed">
+              {sectorDetail
+                ? sectorDetail.sector.description
+                : "Opportunity sizing, efficiency benchmarks & disruption targets for AI insurance founders."}
+            </p>
+          </div>
+          {isIndustryView && overviewData && (
+            <div className="mt-8">
+              <HeroBenchmarks
+                totalPremium={overviewData.totalPremium}
+                avgCombinedRatio={overviewData.avgCombinedRatio}
+                avgExpenseRatio={overviewData.avgExpenseRatio}
+                trackedCompanies={overviewData.totalCompanies}
               />
-            );
-          })}
+            </div>
+          )}
         </div>
+      </section>
+
+      {/* Sector Toggle */}
+      <div className="container px-4 md:px-6 pt-6">
+        <Suspense fallback={null}>
+          <SectorToggle />
+        </Suspense>
       </div>
 
-      {/* Section 4: Disruption Targets Table */}
-      <DisruptionTargetsTable targets={data.disruptionTargets} />
+      {/* Main Content */}
+      <div className="container px-4 md:px-6">
+        {isIndustryView && overviewData ? (
+          <>
+            {/* Industry Trends */}
+            <section className="py-10 border-b border-border/40">
+              <div className="flex items-baseline gap-3 mb-5">
+                <h2 className="text-lg font-semibold tracking-tight">Industry Trends</h2>
+                <span className="text-xs text-muted-foreground">5-year averages across all tracked insurers</span>
+              </div>
+              <IndustryTrendCharts
+                efficiencyData={overviewData.efficiencyData}
+                growthData={overviewData.growthData}
+              />
+            </section>
 
-      {/* Section 5: Benchmark Targets */}
-      <BenchmarkStrip benchmarks={data.benchmarks} />
+            {/* Sector Opportunity Cards */}
+            <section className="py-10 border-b border-border/40">
+              <div className="flex items-baseline gap-3 mb-5">
+                <h2 className="text-lg font-semibold tracking-tight">Sector Opportunities</h2>
+                <span className="text-xs text-muted-foreground">Higher expense ratio = more automation upside</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {SECTORS.map((sector) => {
+                  const overview = overviewData.sectorOverviews.find(
+                    (s) => s.sector === sector.name
+                  );
+                  return (
+                    <SectorOpportunityCard
+                      key={sector.slug}
+                      sector={sector.name}
+                      label={sector.label}
+                      companyCount={overview?.companyCount ?? 0}
+                      avgExpenseRatio={
+                        overview?.averages["expense_ratio"] ?? null
+                      }
+                      premiumGrowth={
+                        overview?.averages["premium_growth_yoy"] ?? null
+                      }
+                      expenseRatioTrend={
+                        overviewData.sectorExpenseTrends[sector.name] ?? []
+                      }
+                      color={sector.color.replace("bg-", "var(--chart-1)")}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Disruption Targets */}
+            <section className="py-10 border-b border-border/40">
+              <DisruptionTargetsTable targets={overviewData.disruptionTargets} />
+            </section>
+
+            {/* Benchmarks */}
+            <section className="py-10 pb-14">
+              <BenchmarkStrip benchmarks={overviewData.benchmarks} />
+            </section>
+          </>
+        ) : sectorDetail ? (
+          <div className="space-y-6 py-8">
+            {/* Sector KPI Cards */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              {sectorDetail.sector.key_metrics.map((metric) => (
+                <KpiCard
+                  key={metric}
+                  title={metric.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  metricName={metric}
+                  value={sectorDetail.averages[metric] ?? null}
+                  tooltip={`Sector average for ${metric.replace(/_/g, " ")}`}
+                />
+              ))}
+            </div>
+
+            {/* Trend Charts */}
+            <SectorTrendCharts
+              trendData={sectorDetail.trendData}
+              availableMetrics={sectorDetail.sector.key_metrics}
+              tickers={sectorDetail.tickers}
+            />
+
+            {/* Companies Table */}
+            <div>
+              <h2 className="text-xl font-semibold mb-4">
+                Companies in {sectorDetail.sector.label}
+              </h2>
+              <CompaniesTable
+                data={sectorDetail.tableData}
+                initialSectorFilter={[sectorDetail.sector.name]}
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

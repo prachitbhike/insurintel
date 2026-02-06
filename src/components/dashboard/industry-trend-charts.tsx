@@ -8,22 +8,22 @@ import { type YearlyAggregate } from "@/lib/metrics/aggregations";
 const efficiencyConfig: ChartConfig = {
   combined_ratio: {
     label: "Combined Ratio",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
   expense_ratio: {
     label: "Expense Ratio",
-    color: "hsl(var(--chart-2))",
+    color: "var(--chart-2)",
   },
 };
 
 const growthConfig: ChartConfig = {
   premium_growth_yoy: {
     label: "Premium Growth YoY",
-    color: "hsl(var(--chart-3))",
+    color: "var(--chart-3)",
   },
   roe: {
     label: "Return on Equity",
-    color: "hsl(var(--chart-4))",
+    color: "var(--chart-4)",
   },
 };
 
@@ -37,42 +37,42 @@ export function IndustryTrendCharts({
   growthData,
 }: IndustryTrendChartsProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">
+    <div className="grid gap-3 md:grid-cols-2">
+      <Card className="shadow-sm">
+        <CardHeader className="pb-1">
+          <CardTitle className="text-sm font-semibold">
             Underwriting Efficiency
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground leading-snug">
             Combined Ratio & Expense Ratio — industry averages over time
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           <LineChartComponent
             data={efficiencyData}
             xKey="year"
             dataKeys={["combined_ratio", "expense_ratio"]}
             config={efficiencyConfig}
-            height={260}
+            height={240}
           />
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">
+      <Card className="shadow-sm">
+        <CardHeader className="pb-1">
+          <CardTitle className="text-sm font-semibold">
             Growth & Returns
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground leading-snug">
             Premium Growth YoY & ROE — industry averages over time
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           <LineChartComponent
             data={growthData}
             xKey="year"
             dataKeys={["premium_growth_yoy", "roe"]}
             config={growthConfig}
-            height={260}
+            height={240}
           />
         </CardContent>
       </Card>

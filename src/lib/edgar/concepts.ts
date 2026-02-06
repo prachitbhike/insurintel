@@ -12,7 +12,7 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "PremiumsEarnedNet",
       "NetPremiumsEarned",
       "PremiumsEarned",
-      "NetPremiumsWritten",
+      // NetPremiumsWritten removed: written ≠ earned (timing difference)
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -23,8 +23,8 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "PolicyholderBenefitsAndClaimsIncurredNet",
       "IncurredClaimsPropertyCasualtyAndLiability",
       "LossesAndLossAdjustmentExpense",
-      "PolicyholderBenefitsAndClaimsIncurredGross",
-      "BenefitsLossesAndExpenses",
+      // PolicyholderBenefitsAndClaimsIncurredGross removed: gross vs net mismatch
+      // BenefitsLossesAndExpenses removed: includes ALL expenses, not just losses
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -58,7 +58,7 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
     metric_name: "total_liabilities",
     aliases: [
       "Liabilities",
-      "LiabilitiesAndStockholdersEquity",
+      // LiabilitiesAndStockholdersEquity removed: equals total assets (L+E), not liabilities
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -66,8 +66,8 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
   {
     metric_name: "eps",
     aliases: [
-      "EarningsPerShareBasic",
       "EarningsPerShareDiluted",
+      "EarningsPerShareBasic",
     ],
     unit_key: "USD/shares",
     taxonomy: "us-gaap",
@@ -76,9 +76,9 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
     metric_name: "shares_outstanding",
     aliases: [
       "CommonStockSharesOutstanding",
-      "EntityCommonStockSharesOutstanding",
       "WeightedAverageNumberOfShareOutstandingBasicAndDiluted",
-      "WeightedAverageNumberOfDilutedSharesOutstanding",
+      // EntityCommonStockSharesOutstanding removed: dei taxonomy, never matches us-gaap lookup
+      // WeightedAverageNumberOfDilutedSharesOutstanding removed: diluted avg wrong for BVPS
     ],
     unit_key: "shares",
     taxonomy: "us-gaap",
@@ -97,9 +97,9 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
     metric_name: "total_debt",
     aliases: [
       "LongTermDebt",
+      "LongTermDebtAndCapitalLeaseObligations",
       "LongTermDebtNoncurrent",
       "DebtInstrumentCarryingAmount",
-      "LongTermDebtAndCapitalLeaseObligations",
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -110,7 +110,7 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "Revenues",
       "RevenueFromContractWithCustomerExcludingAssessedTax",
       "HealthCareOrganizationRevenue",
-      "PremiumsEarnedNet",
+      // PremiumsEarnedNet removed: overlaps with net_premiums_earned
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -118,10 +118,11 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
   {
     metric_name: "medical_claims_expense",
     aliases: [
-      "MedicalCostRatioBenefitsIncurred",
+      "PolicyholderBenefitsAndClaimsIncurredHealthCare",
+      "BenefitExpenseHealthCareOrganizations",
       "PolicyholderBenefitsAndClaimsIncurredNet",
-      "BenefitsAndExpenses",
-      "MedicalCostsAndBenefitsExpense",
+      "HealthCareCostsBenefitExpense",
+      // BenefitsAndExpenses removed: includes ALL expenses
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -139,10 +140,10 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
   {
     metric_name: "underwriting_expenses",
     aliases: [
-      "OtherUnderwritingExpense",
       "UnderwritingExpenses",
-      "OperatingExpenses",
+      "OtherUnderwritingExpense",
       "GeneralAndAdministrativeExpense",
+      // OperatingExpenses removed: includes all operating costs, 2-5x actual UW expense
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",

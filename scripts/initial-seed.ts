@@ -22,7 +22,7 @@ const COMPANIES_SEED = [
   { cik: "0000896159", ticker: "CB", name: "Chubb Limited", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000080661", ticker: "PGR", name: "Progressive Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
   { cik: "0000086312", ticker: "TRV", name: "Travelers Companies", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
-  { cik: "0000899629", ticker: "ALL", name: "Allstate Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
+  { cik: "0000899051", ticker: "ALL", name: "Allstate Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
   { cik: "0000005272", ticker: "AIG", name: "American International Group", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000874766", ticker: "HIG", name: "Hartford Financial Services", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000947484", ticker: "ACGL", name: "Arch Capital Group", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
@@ -44,39 +44,39 @@ const COMPANIES_SEED = [
   { cik: "0000882184", ticker: "GL", name: "Globe Life", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000059558", ticker: "LNC", name: "Lincoln National", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000731766", ticker: "UNH", name: "UnitedHealth Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
-  { cik: "0000813672", ticker: "CI", name: "Cigna Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
-  { cik: "0001099800", ticker: "ELV", name: "Elevance Health", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
+  { cik: "0001739940", ticker: "CI", name: "Cigna Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
+  { cik: "0001156039", ticker: "ELV", name: "Elevance Health", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
   { cik: "0000049071", ticker: "HUM", name: "Humana", sector: "Health", sub_sector: "Medicare Advantage", sic_code: "6324" },
   { cik: "0001071739", ticker: "CNC", name: "Centene Corporation", sector: "Health", sub_sector: "Medicaid", sic_code: "6324" },
   { cik: "0001179929", ticker: "MOH", name: "Molina Healthcare", sector: "Health", sub_sector: "Medicaid", sic_code: "6324" },
   { cik: "0000064803", ticker: "CVS", name: "CVS Health", sector: "Health", sub_sector: "Integrated Health", sic_code: "6324" },
   { cik: "0001067983", ticker: "BRK.B", name: "Berkshire Hathaway", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6331" },
   { cik: "0000913144", ticker: "RNR", name: "RenaissanceRe Holdings", sector: "Reinsurance", sub_sector: "Property Cat", sic_code: "6399" },
-  { cik: "0001364250", ticker: "EG", name: "Everest Group", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6399" },
+  { cik: "0001095073", ticker: "EG", name: "Everest Group", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6399" },
   { cik: "0000898174", ticker: "RGA", name: "Reinsurance Group of America", sector: "Reinsurance", sub_sector: "Life Reinsurance", sic_code: "6311" },
-  { cik: "0000062996", ticker: "MMC", name: "Marsh & McLennan", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
+  { cik: "0000062709", ticker: "MMC", name: "Marsh & McLennan", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000315293", ticker: "AON", name: "Aon plc", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000354190", ticker: "AJG", name: "Arthur J. Gallagher", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0001140536", ticker: "WTW", name: "Willis Towers Watson", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000079282", ticker: "BRO", name: "Brown & Brown", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
-  { cik: "0001849820", ticker: "RYAN", name: "Ryan Specialty Holdings", sector: "Brokers", sub_sector: "Specialty Brokerage", sic_code: "6411" },
+  { cik: "0001849253", ticker: "RYAN", name: "Ryan Specialty Holdings", sector: "Brokers", sub_sector: "Specialty Brokerage", sic_code: "6411" },
 ];
 
 const XBRL_CONCEPTS = [
-  { metric_name: "net_premiums_earned", aliases: ["PremiumsEarnedNet", "NetPremiumsEarned", "PremiumsEarned", "NetPremiumsWritten"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "losses_incurred", aliases: ["PolicyholderBenefitsAndClaimsIncurredNet", "IncurredClaimsPropertyCasualtyAndLiability", "LossesAndLossAdjustmentExpense", "PolicyholderBenefitsAndClaimsIncurredGross", "BenefitsLossesAndExpenses"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "net_premiums_earned", aliases: ["PremiumsEarnedNet", "NetPremiumsEarned", "PremiumsEarned"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "losses_incurred", aliases: ["PolicyholderBenefitsAndClaimsIncurredNet", "IncurredClaimsPropertyCasualtyAndLiability", "LossesAndLossAdjustmentExpense"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "net_income", aliases: ["NetIncomeLoss", "ProfitLoss", "NetIncomeLossAvailableToCommonStockholdersBasic"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "stockholders_equity", aliases: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "total_assets", aliases: ["Assets"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "total_liabilities", aliases: ["Liabilities", "LiabilitiesAndStockholdersEquity"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "eps", aliases: ["EarningsPerShareBasic", "EarningsPerShareDiluted"], unit_key: "USD/shares", taxonomy: "us-gaap" },
-  { metric_name: "shares_outstanding", aliases: ["CommonStockSharesOutstanding", "EntityCommonStockSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "WeightedAverageNumberOfDilutedSharesOutstanding"], unit_key: "shares", taxonomy: "us-gaap" },
+  { metric_name: "total_liabilities", aliases: ["Liabilities"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "eps", aliases: ["EarningsPerShareDiluted", "EarningsPerShareBasic"], unit_key: "USD/shares", taxonomy: "us-gaap" },
+  { metric_name: "shares_outstanding", aliases: ["CommonStockSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"], unit_key: "shares", taxonomy: "us-gaap" },
   { metric_name: "investment_income", aliases: ["NetInvestmentIncome", "InvestmentIncomeNet", "InvestmentIncomeInterestAndDividend"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "total_debt", aliases: ["LongTermDebt", "LongTermDebtNoncurrent", "DebtInstrumentCarryingAmount", "LongTermDebtAndCapitalLeaseObligations"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "revenue", aliases: ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "HealthCareOrganizationRevenue", "PremiumsEarnedNet"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "medical_claims_expense", aliases: ["MedicalCostRatioBenefitsIncurred", "PolicyholderBenefitsAndClaimsIncurredNet", "BenefitsAndExpenses", "MedicalCostsAndBenefitsExpense"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "total_debt", aliases: ["LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebtNoncurrent", "DebtInstrumentCarryingAmount"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "revenue", aliases: ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "HealthCareOrganizationRevenue"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "medical_claims_expense", aliases: ["PolicyholderBenefitsAndClaimsIncurredHealthCare", "BenefitExpenseHealthCareOrganizations", "PolicyholderBenefitsAndClaimsIncurredNet", "HealthCareCostsBenefitExpense"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "acquisition_costs", aliases: ["DeferredPolicyAcquisitionCostAmortizationExpense", "PolicyAcquisitionCosts", "AmortizationOfDeferredPolicyAcquisitionCosts"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "underwriting_expenses", aliases: ["OtherUnderwritingExpense", "UnderwritingExpenses", "OperatingExpenses", "GeneralAndAdministrativeExpense"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "underwriting_expenses", aliases: ["UnderwritingExpenses", "OtherUnderwritingExpense", "GeneralAndAdministrativeExpense"], unit_key: "USD", taxonomy: "us-gaap" },
 ];
 
 // ------- Helpers -------
@@ -184,7 +184,7 @@ function parseFacts(facts: Record<string, unknown>): ParsedMetric[] {
   return metrics;
 }
 
-function computeDerived(raw: ParsedMetric[], fy: number, fq: number | null, pt: "annual" | "quarterly"): ParsedMetric[] {
+function computeDerived(raw: ParsedMetric[], fy: number, fq: number | null, pt: "annual" | "quarterly", sector?: string): ParsedMetric[] {
   const lookup: Record<string, number | undefined> = {};
   for (const m of raw) {
     if (m.fiscal_year === fy && m.fiscal_quarter === fq && m.period_type === pt) {
@@ -195,19 +195,24 @@ function computeDerived(raw: ParsedMetric[], fy: number, fq: number | null, pt: 
   const derived: ParsedMetric[] = [];
   const base = { period_type: pt, fiscal_year: fy, fiscal_quarter: fq, period_start_date: null, period_end_date: "", accession_number: "derived", filed_at: new Date().toISOString() } as const;
 
-  if (lookup.losses_incurred != null && lookup.net_premiums_earned && lookup.net_premiums_earned !== 0) {
-    derived.push({ ...base, metric_name: "loss_ratio", value: (lookup.losses_incurred / lookup.net_premiums_earned) * 100, unit: "percent" });
+  // Underwriting ratios — P&C and Reinsurance only
+  const uwSectors = ["P&C", "Reinsurance"];
+  if (!sector || uwSectors.includes(sector)) {
+    if (lookup.losses_incurred != null && lookup.net_premiums_earned && lookup.net_premiums_earned !== 0) {
+      derived.push({ ...base, metric_name: "loss_ratio", value: (lookup.losses_incurred / lookup.net_premiums_earned) * 100, unit: "percent" });
+    }
+    const acq = lookup.acquisition_costs ?? 0;
+    const uw = lookup.underwriting_expenses ?? 0;
+    if ((acq + uw) > 0 && lookup.net_premiums_earned && lookup.net_premiums_earned !== 0) {
+      derived.push({ ...base, metric_name: "expense_ratio", value: ((acq + uw) / lookup.net_premiums_earned) * 100, unit: "percent" });
+    }
+    const lr = derived.find((d) => d.metric_name === "loss_ratio")?.value;
+    const er = derived.find((d) => d.metric_name === "expense_ratio")?.value;
+    if (lr != null && er != null) {
+      derived.push({ ...base, metric_name: "combined_ratio", value: lr + er, unit: "percent" });
+    }
   }
-  const acq = lookup.acquisition_costs ?? 0;
-  const uw = lookup.underwriting_expenses ?? 0;
-  if ((acq + uw) > 0 && lookup.net_premiums_earned && lookup.net_premiums_earned !== 0) {
-    derived.push({ ...base, metric_name: "expense_ratio", value: ((acq + uw) / lookup.net_premiums_earned) * 100, unit: "percent" });
-  }
-  const lr = derived.find((d) => d.metric_name === "loss_ratio")?.value;
-  const er = derived.find((d) => d.metric_name === "expense_ratio")?.value;
-  if (lr != null && er != null) {
-    derived.push({ ...base, metric_name: "combined_ratio", value: lr + er, unit: "percent" });
-  }
+  // Universal ratios
   if (lookup.net_income != null && lookup.stockholders_equity && lookup.stockholders_equity !== 0) {
     derived.push({ ...base, metric_name: "roe", value: (lookup.net_income / lookup.stockholders_equity) * 100, unit: "percent" });
   }
@@ -220,8 +225,11 @@ function computeDerived(raw: ParsedMetric[], fy: number, fq: number | null, pt: 
   if (lookup.total_debt != null && lookup.stockholders_equity && lookup.stockholders_equity !== 0) {
     derived.push({ ...base, metric_name: "debt_to_equity", value: lookup.total_debt / lookup.stockholders_equity, unit: "ratio" });
   }
-  if (lookup.medical_claims_expense != null && lookup.revenue && lookup.revenue !== 0) {
-    derived.push({ ...base, metric_name: "medical_loss_ratio", value: (lookup.medical_claims_expense / lookup.revenue) * 100, unit: "percent" });
+  // Medical Loss Ratio — Health only
+  if (!sector || sector === "Health") {
+    if (lookup.medical_claims_expense != null && lookup.revenue && lookup.revenue !== 0) {
+      derived.push({ ...base, metric_name: "medical_loss_ratio", value: (lookup.medical_claims_expense / lookup.revenue) * 100, unit: "percent" });
+    }
   }
   return derived;
 }
@@ -296,7 +304,7 @@ async function main() {
       const allMetrics = [...rawMetrics];
       for (const key of periods) {
         const [fy, fq, pt] = key.split("|");
-        const derived = computeDerived(rawMetrics, Number(fy), fq === "null" ? null : Number(fq), pt as "annual" | "quarterly");
+        const derived = computeDerived(rawMetrics, Number(fy), fq === "null" ? null : Number(fq), pt as "annual" | "quarterly", company.sector);
         allMetrics.push(...derived);
       }
 

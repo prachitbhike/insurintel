@@ -14,6 +14,7 @@ import { Sparkline } from "@/components/charts/sparkline";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { type Sector } from "@/types/database";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export interface DisruptionTarget {
   companyId: string;
@@ -34,69 +35,81 @@ export function DisruptionTargetsTable({
   targets,
 }: DisruptionTargetsTableProps) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
-          Disruption Targets
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Ranked by combined ratio (worst first) — biggest opportunities for
-          automation-driven disruption
+    <Card className="shadow-sm">
+      <CardHeader className="pb-1">
+        <div className="flex items-baseline gap-3">
+          <CardTitle className="text-lg font-semibold tracking-tight">
+            Disruption Targets
+          </CardTitle>
+          <span className="text-xs text-muted-foreground">
+            Worst combined ratio first
+          </span>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          Incumbents with the highest combined ratios present the biggest
+          opportunities for automation-driven disruption.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-2">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">#</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Sector</TableHead>
-              <TableHead className="text-right">Combined Ratio</TableHead>
-              <TableHead className="text-right">Expense Ratio</TableHead>
-              <TableHead className="text-right">ROE</TableHead>
-              <TableHead className="text-right">5yr Trend</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-8 text-[10px] font-medium uppercase tracking-wider">#</TableHead>
+              <TableHead className="text-[10px] font-medium uppercase tracking-wider">Company</TableHead>
+              <TableHead className="text-[10px] font-medium uppercase tracking-wider">Sector</TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">Combined</TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">Expense</TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">ROE</TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider w-20">Trend</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {targets.map((t, i) => (
-              <TableRow key={t.companyId}>
-                <TableCell className="font-medium text-muted-foreground">
+              <TableRow
+                key={t.companyId}
+                className={cn(
+                  i < 3 && "bg-destructive/[0.03]"
+                )}
+              >
+                <TableCell className="text-xs font-mono text-muted-foreground">
                   {i + 1}
                 </TableCell>
                 <TableCell>
                   <Link
                     href={`/companies/${t.ticker.toLowerCase()}`}
-                    className="font-medium hover:underline"
+                    className="font-semibold text-[13px] hover:underline underline-offset-2"
                   >
                     {t.ticker}
                   </Link>
-                  <span className="ml-1.5 text-xs text-muted-foreground hidden sm:inline">
+                  <span className="ml-1.5 text-[11px] text-muted-foreground hidden md:inline">
                     {t.name}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <SectorBadge sector={t.sector} />
+                  <SectorBadge sector={t.sector} className="text-[10px]" />
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium">
                   {formatMetricValue("combined_ratio", t.combinedRatio)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right text-[13px] tabular-nums font-mono">
                   {formatMetricValue("expense_ratio", t.expenseRatio)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="text-right text-[13px] tabular-nums font-mono">
                   {formatMetricValue("roe", t.roe)}
                 </TableCell>
-                <TableCell className="flex justify-end">
-                  {t.trend.length > 1 ? (
-                    <Sparkline
-                      data={t.trend}
-                      color="hsl(var(--chart-1))"
-                      height={24}
-                      width={64}
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
+                <TableCell className="text-right">
+                  <div className="flex justify-end">
+                    {t.trend.length > 1 ? (
+                      <Sparkline
+                        data={t.trend}
+                        color="var(--chart-1)"
+                        height={22}
+                        width={56}
+                      />
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">—</span>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

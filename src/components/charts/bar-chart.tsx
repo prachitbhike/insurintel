@@ -6,7 +6,6 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
-  ResponsiveContainer,
 } from "recharts";
 import {
   ChartContainer,
@@ -38,43 +37,41 @@ export function BarChartComponent({
 
   return (
     <ChartContainer config={config} className="w-full" style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <RechartsBarChart
-          data={data}
-          layout={isVertical ? "vertical" : "horizontal"}
-          margin={{ top: 10, right: 10, left: isVertical ? 80 : 0, bottom: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-          {isVertical ? (
-            <>
-              <XAxis type="number" tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" />
-              <YAxis
-                type="category"
-                dataKey={xKey}
-                tickLine={false}
-                axisLine={false}
-                className="text-xs fill-muted-foreground"
-                width={80}
-              />
-            </>
-          ) : (
-            <>
-              <XAxis dataKey={xKey} tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" />
-              <YAxis tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" width={60} />
-            </>
-          )}
-          <ChartTooltip content={<ChartTooltipContent />} />
-          {dataKeys.map((key) => (
-            <Bar
-              key={key}
-              dataKey={key}
-              fill={`var(--color-${key})`}
-              radius={[4, 4, 0, 0]}
-              stackId={stacked ? "stack" : undefined}
+      <RechartsBarChart
+        data={data}
+        layout={isVertical ? "vertical" : "horizontal"}
+        margin={{ top: 10, right: 10, left: isVertical ? 80 : 0, bottom: 0 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        {isVertical ? (
+          <>
+            <XAxis type="number" tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" />
+            <YAxis
+              type="category"
+              dataKey={xKey}
+              tickLine={false}
+              axisLine={false}
+              className="text-xs fill-muted-foreground"
+              width={80}
             />
-          ))}
-        </RechartsBarChart>
-      </ResponsiveContainer>
+          </>
+        ) : (
+          <>
+            <XAxis dataKey={xKey} tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" />
+            <YAxis tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" width={60} />
+          </>
+        )}
+        <ChartTooltip content={<ChartTooltipContent />} />
+        {dataKeys.map((key) => (
+          <Bar
+            key={key}
+            dataKey={key}
+            fill={`var(--color-${key})`}
+            radius={[4, 4, 0, 0]}
+            stackId={stacked ? "stack" : undefined}
+          />
+        ))}
+      </RechartsBarChart>
     </ChartContainer>
   );
 }

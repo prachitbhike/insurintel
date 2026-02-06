@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InsurIntel
+
+Insurance industry KPI dashboard tracking 41 publicly traded companies across 5 sectors using financial data from SEC EDGAR.
+
+## Sectors & Companies
+
+| Sector | Companies | Key Metrics |
+|--------|-----------|-------------|
+| **Property & Casualty** | CB, PGR, TRV, ALL, AIG, HIG, ACGL, WRB, CINF, MKL, CNA, ERIE, AFG, ORI, AIZ | Combined ratio, loss ratio, expense ratio, net premiums earned, ROE |
+| **Life Insurance** | MET, PRU, AFL, CRBG, PFG, EQH, UNM, GL, LNC | Net income, ROE, ROA, book value per share, total assets |
+| **Health Insurance** | UNH, CI, ELV, HUM, CNC, MOH, CVS | Medical loss ratio, revenue, net income, ROE, EPS |
+| **Reinsurance** | BRK.B, RNR, EG, RGA | Combined ratio, loss ratio, net premiums earned, ROE, BVPS |
+| **Insurance Brokers** | MMC, AON, AJG, WTW, BRO, RYAN | Revenue, net income, ROE, EPS, debt-to-equity |
+
+## Features
+
+- **Dashboard** — Sector-level averages, market highlights (top ROE, best combined ratio, fastest growth)
+- **Company profiles** — KPI grid with YoY comparison, time series charts, peer comparison vs sector averages, annual/quarterly financials
+- **Sector views** — Sector averages, company rankings by key metrics
+- **Comparison tool** — Side-by-side metrics and charts for up to 5 companies
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router, React Server Components, ISR)
+- **Database:** Supabase (PostgreSQL with materialized views)
+- **Data source:** SEC EDGAR XBRL API (free, no authentication)
+- **UI:** shadcn/ui, Tailwind CSS v4, Recharts, TanStack Table
+- **Deployment:** Vercel with daily cron jobs
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 20+
+- A [Supabase](https://supabase.com) project
+- Run the migration in `supabase/migrations/001_initial_schema.sql` against your database
+
+### Environment
+
+Copy `.env.example` to `.env.local` and fill in:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+CRON_SECRET=<any-secret-for-api-auth>
+EDGAR_USER_AGENT=<AppName your-email@example.com>
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`EDGAR_USER_AGENT` is required by SEC — provide your app name and a contact email.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npx tsx scripts/initial-seed.ts   # Seed companies + fetch EDGAR data (run once)
+npm run dev                        # Start dev server at http://localhost:3000
+```
 
-## Learn More
+The initial seed fetches XBRL data for all 41 companies. Run it locally to avoid Vercel function timeouts.
 
-To learn more about Next.js, take a look at the following resources:
+### Data Refresh
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+In production, two Vercel cron jobs keep data current:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **6:00 AM daily** — `/api/cron/ingest-facts` ingests data for 8 companies (full universe refreshes every ~5 days)
+- **7:00 AM daily** — `/api/cron/refresh-views` refreshes materialized views
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/                  # Next.js App Router pages + API routes
+│   ├── api/cron/         # Cron endpoints (ingest-facts, refresh-views)
+│   ├── companies/        # Company list + /companies/[ticker] detail
+│   ├── sectors/          # Sector list + /sectors/[slug] detail
+│   └── compare/          # Company comparison tool
+├── components/           # React components (ui/, layout/, charts/, etc.)
+├── lib/
+│   ├── edgar/            # EDGAR API client, XBRL parser, rate limiter
+│   ├── metrics/          # Derived calculations, definitions, formatters
+│   ├── queries/          # Supabase query functions
+│   ├── supabase/         # Supabase client setup (server, client, admin)
+│   └── data/             # Seed data and sector definitions
+└── types/                # TypeScript type definitions
+supabase/
+└── migrations/           # Database schema (tables, views, indexes, RLS)
+scripts/
+└── initial-seed.ts       # One-time data population script
+```

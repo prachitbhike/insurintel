@@ -14,7 +14,7 @@ export const COMPANIES_SEED: CompanySeed[] = [
   { cik: "0000896159", ticker: "CB", name: "Chubb Limited", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000080661", ticker: "PGR", name: "Progressive Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
   { cik: "0000086312", ticker: "TRV", name: "Travelers Companies", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
-  { cik: "0000899629", ticker: "ALL", name: "Allstate Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
+  { cik: "0000899051", ticker: "ALL", name: "Allstate Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
   { cik: "0000005272", ticker: "AIG", name: "American International Group", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000874766", ticker: "HIG", name: "Hartford Financial Services", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000947484", ticker: "ACGL", name: "Arch Capital Group", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
@@ -40,8 +40,8 @@ export const COMPANIES_SEED: CompanySeed[] = [
 
   // Health (7)
   { cik: "0000731766", ticker: "UNH", name: "UnitedHealth Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
-  { cik: "0000813672", ticker: "CI", name: "Cigna Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
-  { cik: "0001099800", ticker: "ELV", name: "Elevance Health", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
+  { cik: "0001739940", ticker: "CI", name: "Cigna Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
+  { cik: "0001156039", ticker: "ELV", name: "Elevance Health", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
   { cik: "0000049071", ticker: "HUM", name: "Humana", sector: "Health", sub_sector: "Medicare Advantage", sic_code: "6324" },
   { cik: "0001071739", ticker: "CNC", name: "Centene Corporation", sector: "Health", sub_sector: "Medicaid", sic_code: "6324" },
   { cik: "0001179929", ticker: "MOH", name: "Molina Healthcare", sector: "Health", sub_sector: "Medicaid", sic_code: "6324" },
@@ -50,14 +50,14 @@ export const COMPANIES_SEED: CompanySeed[] = [
   // Reinsurance (4)
   { cik: "0001067983", ticker: "BRK.B", name: "Berkshire Hathaway", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6331" },
   { cik: "0000913144", ticker: "RNR", name: "RenaissanceRe Holdings", sector: "Reinsurance", sub_sector: "Property Cat", sic_code: "6399" },
-  { cik: "0001364250", ticker: "EG", name: "Everest Group", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6399" },
+  { cik: "0001095073", ticker: "EG", name: "Everest Group", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6399" },
   { cik: "0000898174", ticker: "RGA", name: "Reinsurance Group of America", sector: "Reinsurance", sub_sector: "Life Reinsurance", sic_code: "6311" },
 
   // Brokers (6)
-  { cik: "0000062996", ticker: "MMC", name: "Marsh & McLennan", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
+  { cik: "0000062709", ticker: "MMC", name: "Marsh & McLennan", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000315293", ticker: "AON", name: "Aon plc", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000354190", ticker: "AJG", name: "Arthur J. Gallagher", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0001140536", ticker: "WTW", name: "Willis Towers Watson", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000079282", ticker: "BRO", name: "Brown & Brown", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
-  { cik: "0001849820", ticker: "RYAN", name: "Ryan Specialty Holdings", sector: "Brokers", sub_sector: "Specialty Brokerage", sic_code: "6411" },
+  { cik: "0001849253", ticker: "RYAN", name: "Ryan Specialty Holdings", sector: "Brokers", sub_sector: "Specialty Brokerage", sic_code: "6411" },
 ];

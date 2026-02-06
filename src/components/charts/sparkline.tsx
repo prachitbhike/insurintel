@@ -11,7 +11,7 @@ interface SparklineProps {
 
 export function Sparkline({
   data,
-  color = "hsl(var(--chart-1))",
+  color = "var(--chart-1)",
   height = 32,
   width = 80,
 }: SparklineProps) {

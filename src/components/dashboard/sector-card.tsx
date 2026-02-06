@@ -21,7 +21,7 @@ export function SectorCard({
   const primaryValue = averages[primaryMetric] ?? null;
 
   return (
-    <Link href={`/sectors/${sector.slug}`}>
+    <Link href={`/?sector=${sector.slug}`} scroll={false}>
       <Card className="group transition-all hover:shadow-md hover:border-primary/20">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
