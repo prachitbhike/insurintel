@@ -12,6 +12,9 @@ import { KpiGrid } from "@/components/company-detail/kpi-grid";
 import { MetricCharts } from "@/components/company-detail/metric-charts";
 import { PeerComparison } from "@/components/company-detail/peer-comparison";
 import { FinancialTable } from "@/components/company-detail/financial-table";
+import { QuickTake } from "@/components/company-detail/quick-take";
+import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
+import { formatMetricValue } from "@/lib/metrics/formatters";
 import { type KpiValue, type TimeseriesPoint, type PeerComparison as PeerComparisonType, type FinancialRow } from "@/types/company";
 import { COMPANIES_SEED } from "@/lib/data/companies-seed";
 
@@ -35,6 +38,70 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${decodedTicker} - ${name}`,
     description: `Financial KPIs and metrics for ${name} (${decodedTicker}). View combined ratio, ROE, premiums, and more.`,
   };
+}
+
+function generateQuickTake(
+  companyName: string,
+  sector: string,
+  comparisons: PeerComparisonType[],
+  kpis: KpiValue[],
+): string[] {
+  const sentences: string[] = [];
+  const validComparisons = comparisons.filter(
+    (c) => c.company_value != null && c.sector_avg != null
+  );
+
+  if (validComparisons.length === 0) return sentences;
+
+  // Score each metric by relative performance vs sector avg
+  const scored = validComparisons.map((c) => {
+    const def = METRIC_DEFINITIONS[c.metric_name];
+    const diff = c.company_value! - c.sector_avg!;
+    const absDiff = Math.abs(c.sector_avg!) > 0
+      ? Math.abs(diff / c.sector_avg!) * 100
+      : 0;
+    const isBetter = def?.higher_is_better ? diff > 0 : diff < 0;
+    return { ...c, def, absDiff, isBetter };
+  });
+
+  // Top strength
+  const strengths = scored.filter((s) => s.isBetter).sort((a, b) => b.absDiff - a.absDiff);
+  if (strengths.length > 0) {
+    const s = strengths[0];
+    const label = s.def?.label ?? s.metric_name.replace(/_/g, " ");
+    sentences.push(
+      `${companyName} leads its ${sector} peers with a ${label.toLowerCase()} of ${formatMetricValue(s.metric_name, s.company_value)}, vs the sector average of ${formatMetricValue(s.metric_name, s.sector_avg)}.`
+    );
+  }
+
+  // Top weakness
+  const weaknesses = scored.filter((s) => !s.isBetter).sort((a, b) => b.absDiff - a.absDiff);
+  if (weaknesses.length > 0) {
+    const w = weaknesses[0];
+    const label = w.def?.label ?? w.metric_name.replace(/_/g, " ");
+    const rankStr = w.rank != null && w.total != null ? `, ranking #${w.rank} of ${w.total}` : "";
+    sentences.push(
+      `Its ${label.toLowerCase()} of ${formatMetricValue(w.metric_name, w.company_value)} trails the sector average of ${formatMetricValue(w.metric_name, w.sector_avg)}${rankStr}.`
+    );
+  }
+
+  // YoY trend from KPIs
+  const kpisWithChange = kpis.filter(
+    (k) => k.change_pct != null && Math.abs(k.change_pct) >= 1
+  );
+  if (kpisWithChange.length > 0) {
+    const biggest = kpisWithChange.sort(
+      (a, b) => Math.abs(b.change_pct!) - Math.abs(a.change_pct!)
+    )[0];
+    const def = METRIC_DEFINITIONS[biggest.metric_name];
+    const label = def?.label ?? biggest.metric_name.replace(/_/g, " ");
+    const direction = biggest.change_pct! > 0 ? "increased" : "decreased";
+    sentences.push(
+      `${label} has ${direction} ${Math.abs(biggest.change_pct!).toFixed(1)}% year-over-year.`
+    );
+  }
+
+  return sentences;
 }
 
 export default async function CompanyDetailPage({ params }: PageProps) {
@@ -179,6 +246,13 @@ export default async function CompanyDetailPage({ params }: PageProps) {
     };
   }
 
+  const quickTakeSentences = generateQuickTake(
+    company.name,
+    company.sector,
+    peerComparisons,
+    kpis,
+  );
+
   return (
     <div className="container space-y-6 px-4 py-8 md:px-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -207,7 +281,11 @@ export default async function CompanyDetailPage({ params }: PageProps) {
         </Link>
       </div>
 
+      <QuickTake sentences={quickTakeSentences} />
+
       <KpiGrid kpis={kpis} sector={company.sector} />
+
+      <PeerComparison comparisons={peerComparisons} ticker={company.ticker} />
 
       <MetricCharts timeseries={timeseries} sector={company.sector} />
 
@@ -218,8 +296,6 @@ export default async function CompanyDetailPage({ params }: PageProps) {
           years={financialYears}
         />
       </div>
-
-      <PeerComparison comparisons={peerComparisons} ticker={company.ticker} />
     </div>
   );
 }

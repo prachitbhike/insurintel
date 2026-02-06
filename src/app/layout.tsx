@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SiteHeader } from "@/components/layout/site-header";
+import { CommandSearch } from "@/components/layout/command-search";
 import { Footer } from "@/components/layout/footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -44,6 +45,7 @@ export default function RootLayout({
           <TooltipProvider>
             <div className="relative flex min-h-screen flex-col">
               <SiteHeader />
+              <CommandSearch />
               <main className="flex-1">{children}</main>
               <Footer />
             </div>

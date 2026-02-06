@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkline } from "@/components/charts/sparkline";
 import { formatMetricValue } from "@/lib/metrics/formatters";
+import { MetricLabel } from "@/components/ui/metric-label";
 import Link from "next/link";
 import { type Sector } from "@/types/database";
 import { getSectorSlug } from "@/lib/data/sectors";
@@ -78,7 +79,7 @@ export function SectorOpportunityCard({
           <div className="grid grid-cols-2 gap-x-4">
             <div>
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Expense Ratio
+                <MetricLabel metricName="expense_ratio" label="Expense Ratio" className="text-[10px]" iconClassName="h-2.5 w-2.5" />
               </p>
               <p className="text-base font-bold tabular-nums font-mono mt-0.5">
                 {formatMetricValue("expense_ratio", avgExpenseRatio)}
@@ -86,7 +87,7 @@ export function SectorOpportunityCard({
             </div>
             <div>
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Premium Growth
+                <MetricLabel metricName="premium_growth_yoy" label="Premium Growth" className="text-[10px]" iconClassName="h-2.5 w-2.5" />
               </p>
               <p className="text-base font-bold tabular-nums font-mono mt-0.5">
                 {formatMetricValue("premium_growth_yoy", premiumGrowth)}

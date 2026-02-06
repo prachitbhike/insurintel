@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
+import { MetricLabel } from "@/components/ui/metric-label";
 import { cn } from "@/lib/utils";
 
 interface ComparisonTableProps {
@@ -57,8 +58,8 @@ export function ComparisonTable({
 
               return (
                 <TableRow key={metricName}>
-                  <TableCell className="font-medium capitalize">
-                    {def?.label ?? metricName.replace(/_/g, " ")}
+                  <TableCell className="font-medium">
+                    <MetricLabel metricName={metricName} className="text-sm" iconClassName="h-3 w-3" />
                   </TableCell>
                   {values.map((value, i) => (
                     <TableCell

@@ -50,6 +50,9 @@ export function parseCompanyFacts(facts: CompanyFacts): ParsedMetric[] {
     ]);
 
     for (const entry of deduped) {
+      // Use end date year as the actual fiscal year (not entry.fy which
+      // is the filing year and tags all comparative data the same)
+      const endYear = parseInt(entry.end.substring(0, 4), 10);
       const isAnnual = entry.form === "10-K";
       const fiscalQuarter = isAnnual ? null : parseFiscalQuarter(entry.fp);
 
@@ -58,7 +61,7 @@ export function parseCompanyFacts(facts: CompanyFacts): ParsedMetric[] {
         value: entry.val,
         unit: concept.unit_key === "USD" ? "USD" : concept.unit_key,
         period_type: isAnnual ? "annual" : "quarterly",
-        fiscal_year: entry.fy,
+        fiscal_year: endYear,
         fiscal_quarter: fiscalQuarter,
         period_start_date: entry.start ?? null,
         period_end_date: entry.end,
@@ -76,10 +79,10 @@ function deduplicateEntries(entries: XbrlUnit[]): XbrlUnit[] {
   const map = new Map<string, XbrlUnit>();
 
   for (const entry of entries) {
-    const key = `${entry.fy}|${entry.fp}|${entry.form}|${entry.start ?? ""}|${entry.end}`;
+    const key = `${entry.form}|${entry.start ?? ""}|${entry.end}`;
     const existing = map.get(key);
 
-    if (!existing || entry.filed > existing.filed) {
+    if (!existing || entry.filed >= existing.filed) {
       map.set(key, entry);
     }
   }

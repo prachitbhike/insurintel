@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CompanyPicker } from "./company-picker";
 import { ComparisonTable } from "./comparison-table";
 import { ComparisonChart } from "./comparison-chart";
+import { SuggestedComparisons } from "./suggested-comparisons";
 import { type ComparisonData } from "@/lib/queries/compare";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 
@@ -132,10 +133,13 @@ export function ComparePageClient({
       )}
 
       {!loading && selected.length === 0 && (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground">
-            Select companies above to compare their financial metrics side by side.
-          </p>
+        <div className="space-y-6">
+          <div className="rounded-lg border border-dashed p-12 text-center">
+            <p className="text-muted-foreground">
+              Select companies above to compare their financial metrics side by side.
+            </p>
+          </div>
+          <SuggestedComparisons />
         </div>
       )}
     </div>

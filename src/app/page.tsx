@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSectorOverviews, getSectorAverages } from "@/lib/queries/sectors";
 import { getCompaniesBySector } from "@/lib/queries/companies";
@@ -89,6 +90,10 @@ async function getOverviewData() {
       "expense_ratio"
     );
 
+    const bestExpenseRatioValue = expenseRatios.length > 0
+      ? Math.min(...expenseRatios.map((e) => e.metric_value))
+      : 0;
+
     const disruptionTargets: DisruptionTarget[] = [...combinedRatios]
       .sort((a, b) => b.metric_value - a.metric_value)
       .slice(0, 10)
@@ -96,23 +101,46 @@ async function getOverviewData() {
         const expense = expenseRatios.find(
           (e) => e.company_id === m.company_id
         );
+        const premium = premiums.find(
+          (p) => p.company_id === m.company_id
+        );
         const roe = roes.find((r) => r.company_id === m.company_id);
         const trend = extractCompanyTimeseries(
           industryTimeseries,
           "combined_ratio",
           m.company_id
         );
+        const expenseVal = expense?.metric_value ?? null;
+        const premiumVal = premium?.metric_value ?? null;
+        const automationSavings =
+          expenseVal != null && premiumVal != null && expenseVal > bestExpenseRatioValue
+            ? ((expenseVal - bestExpenseRatioValue) / 100) * premiumVal
+            : null;
         return {
           companyId: m.company_id,
           ticker: m.ticker,
           name: m.name,
           sector: m.sector,
           combinedRatio: m.metric_value,
-          expenseRatio: expense?.metric_value ?? null,
+          expenseRatio: expenseVal,
           roe: roe?.metric_value ?? null,
+          automationSavings,
           trend,
         };
       });
+
+    // Compute total automation TAM across all companies
+    let totalAutomationTAM = 0;
+    for (const expense of expenseRatios) {
+      const premium = premiums.find(
+        (p) => p.company_id === expense.company_id
+      );
+      if (premium && expense.metric_value > bestExpenseRatioValue) {
+        totalAutomationTAM +=
+          ((expense.metric_value - bestExpenseRatioValue) / 100) *
+          premium.metric_value;
+      }
+    }
 
     const bestCombined = [...combinedRatios].sort(
       (a, b) => a.metric_value - b.metric_value
@@ -163,6 +191,7 @@ async function getOverviewData() {
       totalPremium: sum(premiums),
       avgCombinedRatio: avg(combinedRatios),
       avgExpenseRatio: avg(expenseRatios),
+      totalAutomationTAM,
       efficiencyData,
       growthData,
       sectorOverviews,
@@ -176,6 +205,7 @@ async function getOverviewData() {
       totalPremium: null,
       avgCombinedRatio: null,
       avgExpenseRatio: null,
+      totalAutomationTAM: 0,
       efficiencyData: [],
       growthData: [],
       sectorOverviews: [],
@@ -320,6 +350,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 avgCombinedRatio={overviewData.avgCombinedRatio}
                 avgExpenseRatio={overviewData.avgExpenseRatio}
                 trackedCompanies={overviewData.totalCompanies}
+                totalAutomationTAM={overviewData.totalAutomationTAM}
               />
             </div>
           )}
@@ -394,6 +425,26 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </>
         ) : sectorDetail ? (
           <div className="space-y-6 py-8">
+            {/* AI Opportunity Narrative */}
+            {sectorDetail.sector.ai_opportunities.length > 0 && (
+              <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="h-4 w-4 text-primary/60" />
+                  <h3 className="text-sm font-semibold">
+                    Where AI Wins in {sectorDetail.sector.label}
+                  </h3>
+                </div>
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {sectorDetail.sector.ai_opportunities.map((opp, i) => (
+                    <li key={i} className="flex gap-2 text-xs text-muted-foreground leading-relaxed">
+                      <span className="text-primary/40 shrink-0">-</span>
+                      {opp}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Sector KPI Cards */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {sectorDetail.sector.key_metrics.map((metric) => (

@@ -1,4 +1,5 @@
 import { formatMetricValue } from "@/lib/metrics/formatters";
+import { MetricLabel } from "@/components/ui/metric-label";
 import { Target } from "lucide-react";
 
 export interface BenchmarkEntry {
@@ -34,7 +35,7 @@ export function BenchmarkStrip({ benchmarks }: BenchmarkStripProps) {
             className="bg-card px-4 py-4 space-y-1.5"
           >
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {b.label}
+              <MetricLabel metricName={b.metricName} label={b.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
             </p>
             <p className="text-2xl font-bold tabular-nums font-mono tracking-tight">
               {formatMetricValue(b.metricName, b.value)}

@@ -6,6 +6,7 @@ import { BarChartComponent } from "@/components/charts/bar-chart";
 import { type PeerComparison as PeerComparisonType } from "@/types/company";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
+import { MetricLabel } from "@/components/ui/metric-label";
 import { type ChartConfig } from "@/components/ui/chart";
 
 interface PeerComparisonProps {
@@ -56,8 +57,8 @@ export function PeerComparison({ comparisons, ticker }: PeerComparisonProps) {
               className="flex items-center justify-between rounded-lg border p-3"
             >
               <div>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {c.metric_name.replace(/_/g, " ")}
+                <p className="text-xs text-muted-foreground">
+                  <MetricLabel metricName={c.metric_name} className="text-xs" iconClassName="h-2.5 w-2.5" />
                 </p>
                 <p className="text-sm font-medium">
                   {formatMetricValue(c.metric_name, c.company_value)}

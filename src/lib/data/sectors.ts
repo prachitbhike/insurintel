@@ -7,6 +7,7 @@ export interface SectorInfo {
   description: string;
   color: string;
   key_metrics: string[];
+  ai_opportunities: string[];
 }
 
 export const SECTORS: SectorInfo[] = [
@@ -24,6 +25,12 @@ export const SECTORS: SectorInfo[] = [
       "net_premiums_earned",
       "roe",
     ],
+    ai_opportunities: [
+      "Automated claims triage and straight-through processing can cut loss adjustment expenses 20-40%",
+      "ML-driven underwriting models replace manual risk selection, especially in commercial lines",
+      "Computer vision for property damage assessment eliminates field adjuster visits",
+      "Telematics and IoT data enable real-time risk pricing that incumbents are slow to adopt",
+    ],
   },
   {
     name: "Life",
@@ -38,6 +45,12 @@ export const SECTORS: SectorInfo[] = [
       "roa",
       "book_value_per_share",
       "total_assets",
+    ],
+    ai_opportunities: [
+      "Accelerated underwriting using health data APIs and predictive models replaces paramedical exams",
+      "AI-powered financial planning tools increase annuity and retirement product cross-sell",
+      "NLP-driven policy servicing automates beneficiary changes, loans, and surrender processing",
+      "Fraud detection models for life claims reduce investigation costs and payout leakage",
     ],
   },
   {
@@ -54,6 +67,12 @@ export const SECTORS: SectorInfo[] = [
       "roe",
       "eps",
     ],
+    ai_opportunities: [
+      "Prior authorization automation reduces admin burden — the #1 cost driver in managed care",
+      "Predictive analytics for high-risk member identification enables early intervention programs",
+      "AI-assisted claims adjudication can process routine medical claims in seconds vs. days",
+      "NLP extraction from clinical notes improves risk adjustment coding accuracy and revenue capture",
+    ],
   },
   {
     name: "Reinsurance",
@@ -69,6 +88,12 @@ export const SECTORS: SectorInfo[] = [
       "roe",
       "book_value_per_share",
     ],
+    ai_opportunities: [
+      "Catastrophe modeling with ML improves loss estimates and capital allocation for nat-cat treaties",
+      "Automated treaty placement and pricing engines reduce broker dependency and speed renewals",
+      "Real-time portfolio monitoring using satellite and IoT data enables dynamic exposure management",
+      "AI-driven claims reserving models reduce reserve volatility and improve capital efficiency",
+    ],
   },
   {
     name: "Brokers",
@@ -78,6 +103,12 @@ export const SECTORS: SectorInfo[] = [
       "Companies that act as intermediaries between insurance buyers and carriers.",
     color: "bg-rose-500",
     key_metrics: ["revenue", "net_income", "roe", "eps", "debt_to_equity"],
+    ai_opportunities: [
+      "AI-powered quote comparison and placement engines threaten the traditional broker value prop",
+      "Automated renewal processing and policy checking reduces E&O risk and back-office headcount",
+      "Predictive cross-sell models identify coverage gaps across client portfolios",
+      "Digital-first distribution platforms can undercut broker commissions on small commercial lines",
+    ],
   },
 ];
 

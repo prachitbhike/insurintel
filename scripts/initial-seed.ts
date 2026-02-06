@@ -32,7 +32,7 @@ const COMPANIES_SEED = [
   { cik: "0000021175", ticker: "CNA", name: "CNA Financial", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000922621", ticker: "ERIE", name: "Erie Indemnity", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
   { cik: "0001042046", ticker: "AFG", name: "American Financial Group", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
-  { cik: "0000073124", ticker: "ORI", name: "Old Republic International", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
+  { cik: "0000074260", ticker: "ORI", name: "Old Republic International", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0001267238", ticker: "AIZ", name: "Assurant", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
   { cik: "0001099219", ticker: "MET", name: "MetLife", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0001137774", ticker: "PRU", name: "Prudential Financial", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
@@ -151,16 +151,23 @@ function parseFacts(facts: Record<string, unknown>): ParsedMetric[] {
 
     const minYear = new Date().getFullYear() - 5;
     const all = units.filter((u) => (u.form === "10-K" || u.form === "10-Q") && u.fy >= minYear);
+
+    // Dedup by actual period (using end date), prefer latest filing
     const deduped = new Map<string, XbrlUnit>();
     for (const entry of all) {
-      const key = `${entry.fy}|${entry.fp}|${entry.form}|${entry.start ?? ""}|${entry.end}`;
+      const key = `${entry.form}|${entry.start ?? ""}|${entry.end}`;
       const existing = deduped.get(key);
-      if (!existing || entry.filed > existing.filed) {
+      if (!existing || entry.filed >= existing.filed) {
         deduped.set(key, entry);
       }
     }
 
     for (const entry of deduped.values()) {
+      // Use end date year as the actual fiscal year (not entry.fy which
+      // is the filing year and tags all comparative data the same)
+      const endYear = parseInt(entry.end.substring(0, 4), 10);
+      if (endYear < minYear) continue;
+
       const isAnnual = entry.form === "10-K";
       let fq: number | null = null;
       if (!isAnnual) {
@@ -171,7 +178,7 @@ function parseFacts(facts: Record<string, unknown>): ParsedMetric[] {
         value: entry.val,
         unit: concept.unit_key === "USD" ? "USD" : concept.unit_key,
         period_type: isAnnual ? "annual" : "quarterly",
-        fiscal_year: entry.fy,
+        fiscal_year: endYear,
         fiscal_quarter: fq,
         period_start_date: entry.start ?? null,
         period_end_date: entry.end,
@@ -225,10 +232,12 @@ function computeDerived(raw: ParsedMetric[], fy: number, fq: number | null, pt: 
   if (lookup.total_debt != null && lookup.stockholders_equity && lookup.stockholders_equity !== 0) {
     derived.push({ ...base, metric_name: "debt_to_equity", value: lookup.total_debt / lookup.stockholders_equity, unit: "ratio" });
   }
-  // Medical Loss Ratio — Health only
+  // Medical Loss Ratio — Health only, use premiums as denominator (not total revenue
+  // which includes PBM/pharmacy for diversified health companies like CI, CVS, UNH)
   if (!sector || sector === "Health") {
-    if (lookup.medical_claims_expense != null && lookup.revenue && lookup.revenue !== 0) {
-      derived.push({ ...base, metric_name: "medical_loss_ratio", value: (lookup.medical_claims_expense / lookup.revenue) * 100, unit: "percent" });
+    const mlrDenominator = lookup.net_premiums_earned ?? lookup.revenue;
+    if (lookup.medical_claims_expense != null && mlrDenominator && mlrDenominator !== 0) {
+      derived.push({ ...base, metric_name: "medical_loss_ratio", value: (lookup.medical_claims_expense / mlrDenominator) * 100, unit: "percent" });
     }
   }
   return derived;
@@ -334,7 +343,7 @@ async function main() {
       for (const metric of allMetrics) {
         const key = `${metric.metric_name}|${metric.period_type}|${metric.fiscal_year}|${metric.fiscal_quarter}`;
         const existing = dedupMap.get(key);
-        if (!existing || metric.filed_at > existing.filed_at) {
+        if (!existing || metric.filed_at >= existing.filed_at) {
           dedupMap.set(key, metric);
         }
       }

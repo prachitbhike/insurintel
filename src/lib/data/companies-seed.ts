@@ -24,7 +24,7 @@ export const COMPANIES_SEED: CompanySeed[] = [
   { cik: "0000021175", ticker: "CNA", name: "CNA Financial", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000922621", ticker: "ERIE", name: "Erie Indemnity", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
   { cik: "0001042046", ticker: "AFG", name: "American Financial Group", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
-  { cik: "0000073124", ticker: "ORI", name: "Old Republic International", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
+  { cik: "0000074260", ticker: "ORI", name: "Old Republic International", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0001267238", ticker: "AIZ", name: "Assurant", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
 
   // Life (9)

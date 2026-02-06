@@ -11,7 +11,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectorBadge } from "./sector-badge";
 import { Sparkline } from "@/components/charts/sparkline";
-import { formatMetricValue } from "@/lib/metrics/formatters";
+import { formatMetricValue, formatCurrency } from "@/lib/metrics/formatters";
+import { MetricLabel } from "@/components/ui/metric-label";
 import { type Sector } from "@/types/database";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export interface DisruptionTarget {
   combinedRatio: number | null;
   expenseRatio: number | null;
   roe: number | null;
+  automationSavings: number | null;
   trend: number[];
 }
 
@@ -57,9 +59,18 @@ export function DisruptionTargetsTable({
               <TableHead className="w-8 text-[10px] font-medium uppercase tracking-wider">#</TableHead>
               <TableHead className="text-[10px] font-medium uppercase tracking-wider">Company</TableHead>
               <TableHead className="text-[10px] font-medium uppercase tracking-wider">Sector</TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">Combined</TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">Expense</TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">ROE</TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
+                <MetricLabel metricName="combined_ratio" label="Combined" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
+              </TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
+                <MetricLabel metricName="expense_ratio" label="Expense" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
+              </TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
+                <MetricLabel metricName="roe" label="ROE" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
+              </TableHead>
+              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                <MetricLabel metricName="expense_ratio" label="Automation $" description="Estimated savings if this company matched the best-in-class expense ratio. Formula: (company expense ratio - best) / 100 x net premiums." className="text-[10px] font-medium uppercase tracking-wider justify-end text-amber-600 dark:text-amber-400" iconClassName="h-2.5 w-2.5" />
+              </TableHead>
               <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider w-20">Trend</TableHead>
             </TableRow>
           </TableHeader>
@@ -96,6 +107,11 @@ export function DisruptionTargetsTable({
                 </TableCell>
                 <TableCell className="text-right text-[13px] tabular-nums font-mono">
                   {formatMetricValue("roe", t.roe)}
+                </TableCell>
+                <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium text-amber-600 dark:text-amber-400">
+                  {t.automationSavings != null
+                    ? formatCurrency(t.automationSavings)
+                    : "—"}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end">

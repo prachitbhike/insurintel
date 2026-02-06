@@ -110,13 +110,15 @@ export function calculateDerivedMetrics(
     });
   }
 
-  // Medical Loss Ratio = Medical Claims Expense / Revenue — only for Health
+  // Medical Loss Ratio — Health only, use premiums as denominator (not total revenue
+  // which includes PBM/pharmacy for diversified health companies like CI, CVS, UNH)
   if (!sector || sector === "Health") {
-    if (lookup.medical_claims_expense != null && lookup.revenue != null && lookup.revenue !== 0) {
+    const mlrDenominator = lookup.net_premiums_earned ?? lookup.revenue;
+    if (lookup.medical_claims_expense != null && mlrDenominator != null && mlrDenominator !== 0) {
       derived.push({
         ...base,
         metric_name: "medical_loss_ratio",
-        value: (lookup.medical_claims_expense / lookup.revenue) * 100,
+        value: (lookup.medical_claims_expense / mlrDenominator) * 100,
         unit: "percent",
       });
     }
