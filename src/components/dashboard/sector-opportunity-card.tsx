@@ -35,13 +35,19 @@ const sectorAccent: Record<Sector, { border: string; spark: string; gradient: st
   },
 };
 
+export interface OpportunityMetricDisplay {
+  name: string;
+  label: string;
+  value: number | null;
+}
+
 interface SectorOpportunityCardProps {
   sector: Sector;
   label: string;
   companyCount: number;
-  avgExpenseRatio: number | null;
-  premiumGrowth: number | null;
-  expenseRatioTrend: number[];
+  metric1: OpportunityMetricDisplay;
+  metric2: OpportunityMetricDisplay;
+  sparklineTrend: number[];
   color: string;
 }
 
@@ -49,9 +55,9 @@ export function SectorOpportunityCard({
   sector,
   label,
   companyCount,
-  avgExpenseRatio,
-  premiumGrowth,
-  expenseRatioTrend,
+  metric1,
+  metric2,
+  sparklineTrend,
 }: SectorOpportunityCardProps) {
   const accent = sectorAccent[sector];
 
@@ -74,9 +80,9 @@ export function SectorOpportunityCard({
                 {companyCount} {companyCount === 1 ? "company" : "companies"}
               </p>
             </div>
-            {expenseRatioTrend.length > 1 && (
+            {sparklineTrend.length > 1 && (
               <Sparkline
-                data={expenseRatioTrend}
+                data={sparklineTrend}
                 color={accent.spark}
                 height={36}
                 width={80}
@@ -86,18 +92,18 @@ export function SectorOpportunityCard({
           <div className="grid grid-cols-2 gap-x-4">
             <div>
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                <MetricLabel metricName="expense_ratio" label="Expense Ratio" className="text-[10px]" iconClassName="h-2.5 w-2.5" />
+                <MetricLabel metricName={metric1.name} label={metric1.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
               </p>
               <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
-                {formatMetricValue("expense_ratio", avgExpenseRatio)}
+                {formatMetricValue(metric1.name, metric1.value)}
               </p>
             </div>
             <div>
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                <MetricLabel metricName="premium_growth_yoy" label="Premium Growth" className="text-[10px]" iconClassName="h-2.5 w-2.5" />
+                <MetricLabel metricName={metric2.name} label={metric2.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
               </p>
               <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
-                {formatMetricValue("premium_growth_yoy", premiumGrowth)}
+                {formatMetricValue(metric2.name, metric2.value)}
               </p>
             </div>
           </div>

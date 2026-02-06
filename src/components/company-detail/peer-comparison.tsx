@@ -21,6 +21,10 @@ import { type PeerComparison as PeerComparisonType } from "@/types/company";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { MetricLabel } from "@/components/ui/metric-label";
+import { ExportButtonGroup } from "@/components/ui/export-button-group";
+import { generateCSV, downloadCSV } from "@/lib/export/csv";
+import { copyTableToClipboard } from "@/lib/export/clipboard";
+import { exportChartAsPNG } from "@/lib/export/chart-png";
 import { cn } from "@/lib/utils";
 
 interface PeerComparisonProps {
@@ -32,6 +36,41 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
   if (comparisons.length === 0) {
     return null;
   }
+
+  const handleCopy = async () => {
+    const headers = ["Metric", "Company", "Sector Avg", "Rank"];
+    const rows = comparisons.map((c) => {
+      const def = METRIC_DEFINITIONS[c.metric_name];
+      return [
+        def?.label ?? c.metric_name,
+        formatMetricValue(c.metric_name, c.company_value),
+        formatMetricValue(c.metric_name, c.sector_avg),
+        c.rank != null && c.total != null ? `#${c.rank}/${c.total}` : "—",
+      ];
+    });
+    return copyTableToClipboard(headers, rows);
+  };
+
+  const handleCSV = () => {
+    const headers = ["Metric", "Company", "Sector Avg", "Rank"];
+    const rows = comparisons.map((c) => {
+      const def = METRIC_DEFINITIONS[c.metric_name];
+      return [
+        def?.label ?? c.metric_name,
+        formatMetricValue(c.metric_name, c.company_value),
+        formatMetricValue(c.metric_name, c.sector_avg),
+        c.rank != null && c.total != null ? `#${c.rank}/${c.total}` : "—",
+      ];
+    });
+    const csv = generateCSV(headers, rows);
+    downloadCSV(csv, "peer-comparison.csv");
+  };
+
+  const handlePNG = async () => {
+    const el = document.querySelector("[data-chart-export='peer-comparison']");
+    if (el instanceof HTMLElement) return exportChartAsPNG(el, "peer-comparison.png");
+    return false;
+  };
 
   // Build chart data: % difference vs sector average, normalized so all metrics are comparable
   const chartData = comparisons
@@ -64,13 +103,18 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
   const chartHeight = Math.max(220, chartData.length * 44 + 40);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Peer Comparison</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Performance relative to sector average — green = outperforming, red =
-          underperforming
-        </p>
+    <Card className="group">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <CardTitle>Peer Comparison</CardTitle>
+            <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} onPNG={handlePNG} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Performance relative to sector average — green = outperforming, red =
+            underperforming
+          </p>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {chartData.length > 0 && (
@@ -78,6 +122,7 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
             config={config}
             className="w-full"
             style={{ height: chartHeight }}
+            data-chart-export="peer-comparison"
           >
             <BarChart
               data={chartData}

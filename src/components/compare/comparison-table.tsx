@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useCallback, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { MetricLabel } from "@/components/ui/metric-label";
+import { ExportButtonGroup } from "@/components/ui/export-button-group";
+import { generateCSV, downloadCSV } from "@/lib/export/csv";
+import { copyTableToClipboard } from "@/lib/export/clipboard";
 import { cn } from "@/lib/utils";
 
 interface ComparisonTableProps {
@@ -24,11 +27,36 @@ export function ComparisonTable({
   companies,
   metrics,
 }: ComparisonTableProps) {
-  // Filter out metrics where all companies have null values
-  const metricNames = Object.keys(metrics).filter((metricName) => {
-    const values = companies.map((c) => metrics[metricName]?.[c.ticker] ?? null);
-    return values.some((v) => v !== null);
-  });
+  // Filter out metrics where all companies have null values (single source of truth)
+  const metricNames = useMemo(
+    () =>
+      Object.keys(metrics).filter((metricName) => {
+        const values = companies.map((c) => metrics[metricName]?.[c.ticker] ?? null);
+        return values.some((v) => v !== null);
+      }),
+    [companies, metrics]
+  );
+
+  const getTableData = useCallback(() => {
+    const headers = ["Metric", ...companies.map((c) => c.ticker)];
+    const rows = metricNames.map((metricName) => {
+      const def = METRIC_DEFINITIONS[metricName];
+      const label = def?.label ?? metricName.replace(/_/g, " ");
+      return [label, ...companies.map((c) => formatMetricValue(metricName, metrics[metricName]?.[c.ticker] ?? null))];
+    });
+    return { headers, rows };
+  }, [companies, metrics, metricNames]);
+
+  const handleCopy = useCallback(async () => {
+    const { headers, rows } = getTableData();
+    return copyTableToClipboard(headers, rows);
+  }, [getTableData]);
+
+  const handleCSV = useCallback(() => {
+    const { headers, rows } = getTableData();
+    const csv = generateCSV(headers, rows);
+    downloadCSV(csv, "comparison.csv");
+  }, [getTableData]);
 
   // Group metrics by category for readability
   const categoryOrder = ["underwriting", "health", "premiums", "profitability", "balance_sheet"];
@@ -56,9 +84,12 @@ export function ComparisonTable({
   let lastCategory = "";
 
   return (
-    <Card>
+    <Card className="group">
       <CardHeader>
-        <CardTitle>Side-by-Side Comparison</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle>Side-by-Side Comparison</CardTitle>
+          <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
+        </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>

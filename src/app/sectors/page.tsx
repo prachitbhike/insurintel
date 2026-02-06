@@ -4,6 +4,7 @@ import { getSectorOverviews } from "@/lib/queries/sectors";
 import { getIndustryTimeseries } from "@/lib/queries/metrics";
 import { SectorOverviewGrid } from "@/components/sectors/sector-overview-grid";
 import { aggregateSectorByYear } from "@/lib/metrics/aggregations";
+import { SECTORS } from "@/lib/data/sectors";
 
 export const revalidate = 3600;
 
@@ -15,16 +16,23 @@ export const metadata: Metadata = {
 
 export default async function SectorsPage() {
   let sectorOverviews: Awaited<ReturnType<typeof getSectorOverviews>> = [];
-  let sectorExpenseTrends: Record<string, number[]> = {};
+  const sectorSparklineTrends: Record<string, Record<string, number[]>> = {};
 
   try {
     const supabase = await createClient();
+    const sparklineMetrics = [...new Set(SECTORS.map((s) => s.opportunity_metrics[0].metric))];
     const [overviews, timeseries] = await Promise.all([
       getSectorOverviews(supabase),
-      getIndustryTimeseries(supabase, ["expense_ratio"]),
+      getIndustryTimeseries(supabase, sparklineMetrics),
     ]);
     sectorOverviews = overviews;
-    sectorExpenseTrends = aggregateSectorByYear(timeseries, "expense_ratio");
+    for (const metric of sparklineMetrics) {
+      const byMetric = aggregateSectorByYear(timeseries, metric);
+      for (const [sectorName, values] of Object.entries(byMetric)) {
+        if (!sectorSparklineTrends[sectorName]) sectorSparklineTrends[sectorName] = {};
+        sectorSparklineTrends[sectorName][metric] = values;
+      }
+    }
   } catch {
     // Gracefully handle
   }
@@ -47,7 +55,7 @@ export default async function SectorsPage() {
 
       <SectorOverviewGrid
         sectorOverviews={sectorOverviews}
-        sectorExpenseTrends={sectorExpenseTrends}
+        sectorSparklineTrends={sectorSparklineTrends}
       />
     </div>
   );

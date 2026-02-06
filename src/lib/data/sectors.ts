@@ -224,6 +224,10 @@ export const SECTORS: SectorInfo[] = [
         tooltip: "Average return on equity — capital efficiency",
       },
     ],
+    opportunity_metrics: [
+      { metric: "expense_ratio", label: "Expense Ratio" },
+      { metric: "premium_growth_yoy", label: "Premium Growth" },
+    ],
   },
   {
     name: "Brokers",
@@ -264,6 +268,10 @@ export const SECTORS: SectorInfo[] = [
         aggregation: "avg",
         tooltip: "Average leverage ratio — acquisition-fueled debt",
       },
+    ],
+    opportunity_metrics: [
+      { metric: "roe", label: "ROE" },
+      { metric: "revenue", label: "Revenue" },
     ],
   },
 ];

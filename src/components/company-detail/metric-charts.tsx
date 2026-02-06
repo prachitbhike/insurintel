@@ -6,10 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChartComponent } from "@/components/charts/line-chart";
 import { AreaChartComponent } from "@/components/charts/area-chart";
 import { BarChartComponent } from "@/components/charts/bar-chart";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { type TimeseriesPoint } from "@/types/company";
 import { type ChartConfig } from "@/components/ui/chart";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
-import { formatMetricValue, formatChartTick } from "@/lib/metrics/formatters";
+import { formatMetricValue, formatChartTick, periodLabel, periodSortKey } from "@/lib/metrics/formatters";
+import { ExportButtonGroup } from "@/components/ui/export-button-group";
+import { exportChartAsPNG } from "@/lib/export/chart-png";
 
 interface MetricChartsProps {
   timeseries: Record<string, TimeseriesPoint[]>;
@@ -76,14 +79,25 @@ function groupByUnit(metricNames: string[]): Map<string, string[]> {
 export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
   const applicableTabs = CHART_TABS.filter((t) => t.sectors.includes(sector));
   const [activeTab, setActiveTab] = useState(applicableTabs[0]?.value ?? "profitability");
+  const [periodType, setPeriodType] = useState<"annual" | "quarterly">("annual");
+
+  const handlePNG = async () => {
+    const el = document.querySelector("[data-chart-export='metric-charts']");
+    if (el instanceof HTMLElement) return exportChartAsPNG(el, "historical-trends.png");
+    return false;
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Historical Trends</CardTitle>
+    <Card className="group">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CardTitle>Historical Trends</CardTitle>
+          <ExportButtonGroup onPNG={handlePNG} />
+        </div>
+        <PeriodSelector value={periodType} onValueChange={setPeriodType} />
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} data-chart-export="metric-charts">
           <TabsList className="mb-4">
             {applicableTabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
@@ -115,20 +129,37 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
               <TabsContent key={tab.value} value={tab.value}>
                 <div className={isSingleGroup ? "" : "grid gap-4 md:grid-cols-2"}>
                   {[...unitGroups.entries()].map(([unit, metrics]) => {
-                    // Build chart data: merge metrics by fiscal_year
-                    const yearSet = new Set<number>();
+                    // Filter timeseries points by period type
+                    const filteredTs: Record<string, TimeseriesPoint[]> = {};
                     for (const m of metrics) {
-                      for (const p of timeseries[m]) yearSet.add(p.fiscal_year);
+                      filteredTs[m] = (timeseries[m] ?? []).filter((p) =>
+                        periodType === "annual"
+                          ? p.fiscal_quarter == null
+                          : p.fiscal_quarter != null
+                      );
                     }
-                    const years = [...yearSet].sort();
 
-                    const chartData = years.map((year) => {
+                    // Build chart data: merge metrics by period
+                    const periodSet = new Set<string>();
+                    const sortKeys = new Map<string, number>();
+                    for (const m of metrics) {
+                      for (const p of filteredTs[m]) {
+                        const label = periodLabel(p.fiscal_year, p.fiscal_quarter);
+                        periodSet.add(label);
+                        sortKeys.set(label, periodSortKey(p.fiscal_year, p.fiscal_quarter));
+                      }
+                    }
+                    const periods = [...periodSet].sort(
+                      (a, b) => (sortKeys.get(a) ?? 0) - (sortKeys.get(b) ?? 0)
+                    );
+
+                    const chartData = periods.map((period) => {
                       const point: Record<string, string | number | null> = {
-                        year: String(year),
+                        period,
                       };
                       for (const m of metrics) {
-                        const entry = timeseries[m].find(
-                          (p) => p.fiscal_year === year
+                        const entry = filteredTs[m].find(
+                          (p) => periodLabel(p.fiscal_year, p.fiscal_quarter) === period
                         );
                         point[m] = entry?.value ?? null;
                       }
@@ -170,7 +201,7 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
                         )}
                         <ChartComponent
                           data={chartData}
-                          xKey="year"
+                          xKey="period"
                           dataKeys={metrics}
                           config={config}
                           height={chartHeight}

@@ -16,7 +16,9 @@ import { ThemeToggle } from "./theme-toggle";
 const navigation = [
   { name: "Overview", href: "/" },
   { name: "Companies", href: "/companies" },
+  { name: "Opportunities", href: "/opportunities" },
   { name: "Compare", href: "/compare" },
+  { name: "Learn", href: "/learn" },
 ];
 
 export function SiteHeader() {
@@ -37,7 +39,7 @@ export function SiteHeader() {
               href={item.href}
               className={cn(
                 "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                pathname === item.href
+                (pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)))
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground"
               )}
@@ -99,7 +101,7 @@ export function SiteHeader() {
                     href={item.href}
                     className={cn(
                       "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent",
-                      pathname === item.href
+                      (pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)))
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground"
                     )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -13,6 +14,9 @@ import { SectorBadge } from "./sector-badge";
 import { Sparkline } from "@/components/charts/sparkline";
 import { formatMetricValue, formatCurrency } from "@/lib/metrics/formatters";
 import { MetricLabel } from "@/components/ui/metric-label";
+import { ExportButtonGroup } from "@/components/ui/export-button-group";
+import { generateCSV, downloadCSV } from "@/lib/export/csv";
+import { copyTableToClipboard } from "@/lib/export/clipboard";
 import { type Sector } from "@/types/database";
 import Link from "next/link";
 
@@ -35,6 +39,36 @@ interface DisruptionTargetsTableProps {
 export function DisruptionTargetsTable({
   targets,
 }: DisruptionTargetsTableProps) {
+  const handleCopy = useCallback(async () => {
+    const headers = ["#", "Ticker", "Name", "Sector", "Combined Ratio", "Expense Ratio", "ROE", "Automation $"];
+    const rows = targets.map((t, i) => [
+      String(i + 1),
+      t.ticker,
+      t.name,
+      t.sector,
+      formatMetricValue("combined_ratio", t.combinedRatio),
+      formatMetricValue("expense_ratio", t.expenseRatio),
+      formatMetricValue("roe", t.roe),
+      t.automationSavings != null ? formatCurrency(t.automationSavings) : "—",
+    ]);
+    return copyTableToClipboard(headers, rows);
+  }, [targets]);
+
+  const handleCSV = useCallback(() => {
+    const headers = ["Rank", "Ticker", "Name", "Sector", "Combined Ratio", "Expense Ratio", "ROE", "Automation Savings"];
+    const rows = targets.map((t, i) => [
+      String(i + 1),
+      t.ticker,
+      t.name,
+      t.sector,
+      formatMetricValue("combined_ratio", t.combinedRatio),
+      formatMetricValue("expense_ratio", t.expenseRatio),
+      formatMetricValue("roe", t.roe),
+      t.automationSavings != null ? formatCurrency(t.automationSavings) : "—",
+    ]);
+    const csv = generateCSV(headers, rows);
+    downloadCSV(csv, "disruption-targets.csv");
+  }, [targets]);
   // Compute max values for inline bar normalization
   const maxCombined = Math.max(
     ...targets.map((t) => t.combinedRatio ?? 0),
@@ -46,12 +80,13 @@ export function DisruptionTargetsTable({
   );
 
   return (
-    <Card className="shadow-sm">
+    <Card className="shadow-sm group">
       <CardHeader className="pb-1">
         <div className="flex items-baseline gap-3">
           <CardTitle className="text-2xl font-display tracking-tight">
             Disruption Targets
           </CardTitle>
+          <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
           <span className="text-xs text-muted-foreground">
             Worst combined ratio first
           </span>

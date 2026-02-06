@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -11,32 +11,62 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { ExportButtonGroup } from "@/components/ui/export-button-group";
 import { type FinancialRow } from "@/types/company";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
+import { generateCSV, downloadCSV } from "@/lib/export/csv";
+import { copyTableToClipboard } from "@/lib/export/clipboard";
 
 interface FinancialTableProps {
   annualData: FinancialRow[];
   quarterlyData: FinancialRow[];
   years: string[];
+  quarterlyPeriods: string[];
 }
 
 export function FinancialTable({
   annualData,
   quarterlyData,
   years,
+  quarterlyPeriods,
 }: FinancialTableProps) {
   const [periodType, setPeriodType] = useState<"annual" | "quarterly">(
     "annual"
   );
 
   const data = periodType === "annual" ? annualData : quarterlyData;
-  const displayYears = years.slice(0, 5);
+  const periods = periodType === "annual" ? years : quarterlyPeriods;
+  const displayYears = periods.slice(0, periodType === "annual" ? 5 : 8);
+
+  const getTableData = useCallback(() => {
+    const headers = ["Metric", ...displayYears];
+    const rows = data.map((row) => {
+      const def = METRIC_DEFINITIONS[row.metric_name];
+      const label = def?.label ?? row.metric_name.replace(/_/g, " ");
+      return [label, ...displayYears.map((y) => formatMetricValue(row.metric_name, row.values[y] ?? null))];
+    });
+    return { headers, rows };
+  }, [data, displayYears]);
+
+  const handleCopy = useCallback(async () => {
+    const { headers, rows } = getTableData();
+    return copyTableToClipboard(headers, rows);
+  }, [getTableData]);
+
+  const handleCSV = useCallback(() => {
+    const { headers, rows } = getTableData();
+    const csv = generateCSV(headers, rows);
+    downloadCSV(csv, `financials-${periodType}.csv`);
+  }, [getTableData, periodType]);
 
   return (
-    <Card>
+    <Card className="group">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Financial Data</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle>Financial Data</CardTitle>
+          <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
+        </div>
         <PeriodSelector value={periodType} onValueChange={setPeriodType} />
       </CardHeader>
       <CardContent className="overflow-x-auto">

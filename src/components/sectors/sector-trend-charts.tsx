@@ -26,27 +26,36 @@ import {
 } from "@/components/ui/chart";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue, formatChartTick } from "@/lib/metrics/formatters";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { ExportButtonGroup } from "@/components/ui/export-button-group";
+import { exportChartAsPNG } from "@/lib/export/chart-png";
 
 export interface SectorTrendData {
-  [metricName: string]: { year: number; [ticker: string]: number | null }[];
+  [metricName: string]: { period: string; [ticker: string]: string | number | null }[];
 }
 
 interface SectorTrendChartsProps {
   trendData: SectorTrendData;
+  quarterlyTrendData?: SectorTrendData;
   availableMetrics: string[];
   tickers: string[];
 }
 
 export function SectorTrendCharts({
   trendData,
+  quarterlyTrendData,
   availableMetrics,
   tickers,
 }: SectorTrendChartsProps) {
   const [selectedMetric, setSelectedMetric] = useState(
     availableMetrics[0] ?? "roe"
   );
+  const [periodType, setPeriodType] = useState<"annual" | "quarterly">("annual");
 
-  const timeseriesData = trendData[selectedMetric] ?? [];
+  const activeTrendData = periodType === "quarterly" && quarterlyTrendData
+    ? quarterlyTrendData
+    : trendData;
+  const timeseriesData = activeTrendData[selectedMetric] ?? [];
   const def = METRIC_DEFINITIONS[selectedMetric];
   const higherIsBetter = def?.higher_is_better ?? true;
 
@@ -87,13 +96,21 @@ export function SectorTrendCharts({
   const chartHeight = Math.max(280, barData.length * 36 + 40);
 
   return (
-    <Card>
+    <Card className="group">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Company Rankings</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Company Rankings</CardTitle>
+            <ExportButtonGroup onPNG={async () => {
+              const el = document.querySelector("[data-chart-export='sector-trends']");
+              if (el instanceof HTMLElement) return exportChartAsPNG(el, "company-rankings.png");
+              return false;
+            }} />
+            <PeriodSelector value={periodType} onValueChange={setPeriodType} />
+          </div>
           {timeseriesData.length > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
-              Latest year &middot; {barData.length} companies &middot; sorted{" "}
+              Latest {periodType === "quarterly" ? "quarter" : "year"} &middot; {barData.length} companies &middot; sorted{" "}
               {higherIsBetter ? "highest" : "lowest"} first
             </p>
           )}
@@ -117,6 +134,7 @@ export function SectorTrendCharts({
             config={config}
             className="w-full"
             style={{ height: chartHeight }}
+            data-chart-export="sector-trends"
           >
             <BarChart
               data={barData}

@@ -161,4 +161,50 @@ describe("calculateYoyGrowth", () => {
     const growth = calculateYoyGrowth(current, prior);
     expect(growth[0].value).toBeCloseTo(-10, 1);
   });
+
+  it("computes growth for P&C sector", () => {
+    const current = [makeMetric("net_premiums_earned", 1100e6)];
+    const prior = [
+      makeMetric("net_premiums_earned", 1000e6, { fiscal_year: 2022 }),
+    ];
+    const growth = calculateYoyGrowth(current, prior, "P&C");
+    expect(growth).toHaveLength(1);
+    expect(growth[0].value).toBeCloseTo(10, 1);
+  });
+
+  it("computes growth for Reinsurance sector", () => {
+    const current = [makeMetric("net_premiums_earned", 1200e6)];
+    const prior = [
+      makeMetric("net_premiums_earned", 1000e6, { fiscal_year: 2022 }),
+    ];
+    const growth = calculateYoyGrowth(current, prior, "Reinsurance");
+    expect(growth).toHaveLength(1);
+  });
+
+  it("skips growth for Brokers sector", () => {
+    const current = [makeMetric("net_premiums_earned", 1100e6)];
+    const prior = [
+      makeMetric("net_premiums_earned", 1000e6, { fiscal_year: 2022 }),
+    ];
+    const growth = calculateYoyGrowth(current, prior, "Brokers");
+    expect(growth).toHaveLength(0);
+  });
+
+  it("skips growth for Life sector", () => {
+    const current = [makeMetric("net_premiums_earned", 1100e6)];
+    const prior = [
+      makeMetric("net_premiums_earned", 1000e6, { fiscal_year: 2022 }),
+    ];
+    const growth = calculateYoyGrowth(current, prior, "Life");
+    expect(growth).toHaveLength(0);
+  });
+
+  it("skips growth for Health sector", () => {
+    const current = [makeMetric("net_premiums_earned", 1100e6)];
+    const prior = [
+      makeMetric("net_premiums_earned", 1000e6, { fiscal_year: 2022 }),
+    ];
+    const growth = calculateYoyGrowth(current, prior, "Health");
+    expect(growth).toHaveLength(0);
+  });
 });

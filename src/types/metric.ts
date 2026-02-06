@@ -17,6 +17,7 @@ export interface MetricDefinition {
   applicable_sectors: Sector[];
   higher_is_better: boolean;
   format_decimals: number;
+  founder_insight?: string;
 }
 
 export interface ParsedMetric {

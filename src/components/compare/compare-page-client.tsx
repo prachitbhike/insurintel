@@ -8,12 +8,14 @@ import { ComparisonTable } from "./comparison-table";
 import { ComparisonChart } from "./comparison-chart";
 import { SuggestedComparisons } from "./suggested-comparisons";
 import { type ComparisonData } from "@/lib/queries/compare";
+import { type ComparisonPreset } from "@/lib/queries/presets";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 
 interface ComparePageClientProps {
   allCompanies: { ticker: string; name: string; sector: string }[];
   initialData: ComparisonData | null;
   initialTickers: string[];
+  dynamicPresets?: ComparisonPreset[];
 }
 
 const COMPARISON_METRICS = [
@@ -37,6 +39,7 @@ export function ComparePageClient({
   allCompanies,
   initialData,
   initialTickers,
+  dynamicPresets,
 }: ComparePageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -158,7 +161,7 @@ export function ComparePageClient({
               Select companies above to compare their financial metrics side by side.
             </p>
           </div>
-          <SuggestedComparisons />
+          <SuggestedComparisons dynamicPresets={dynamicPresets} />
         </div>
       )}
     </div>

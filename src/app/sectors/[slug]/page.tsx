@@ -51,9 +51,10 @@ export default async function SectorDetailPage({ params }: PageProps) {
   const sector = getSectorBySlug(slug);
   if (!sector) notFound();
 
-  let averages: Record<string, number> = {};
+  const averages: Record<string, number> = {};
   let sectorAvgRows: SectorAverage[] = [];
-  let trendData: SectorTrendData = {};
+  const trendData: SectorTrendData = {};
+  const quarterlyTrendData: SectorTrendData = {};
   let tickers: string[] = [];
   let tableData: CompanyListItem[] = [];
   let heroStats: ComputedHeroStat[] = [];
@@ -77,14 +78,24 @@ export default async function SectorDetailPage({ params }: PageProps) {
     const companyIds = companies.map((c) => c.id);
     tickers = companies.map((c) => c.ticker).sort();
 
-    const { data: tsRows } = await supabase
-      .from("mv_metric_timeseries")
-      .select("company_id, ticker, metric_name, metric_value, fiscal_year")
-      .in("company_id", companyIds)
-      .in("metric_name", sector.key_metrics)
-      .eq("period_type", "annual")
-      .order("fiscal_year", { ascending: true });
+    const [{ data: tsRows }, { data: qTsRows }] = await Promise.all([
+      supabase
+        .from("mv_metric_timeseries")
+        .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
+        .in("company_id", companyIds)
+        .in("metric_name", sector.key_metrics)
+        .eq("period_type", "annual")
+        .order("fiscal_year", { ascending: true }),
+      supabase
+        .from("mv_metric_timeseries")
+        .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
+        .in("company_id", companyIds)
+        .in("metric_name", sector.key_metrics)
+        .eq("period_type", "quarterly")
+        .order("fiscal_year", { ascending: true }),
+    ]);
 
+    // Build annual trend data
     const metricYearMap = new Map<string, Map<number, Map<string, number>>>();
     for (const row of tsRows ?? []) {
       if (!metricYearMap.has(row.metric_name)) {
@@ -101,11 +112,41 @@ export default async function SectorDetailPage({ params }: PageProps) {
       const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
       trendData[metric] = years.map((year) => {
         const tickerVals = yearMap.get(year)!;
-        const entry: Record<string, number | null> = { year };
+        const entry: Record<string, string | number | null> = { period: String(year) };
         for (const t of tickers) {
           entry[t] = tickerVals.get(t) ?? null;
         }
-        return entry as { year: number; [ticker: string]: number | null };
+        return entry as { period: string; [ticker: string]: string | number | null };
+      });
+    }
+
+    // Build quarterly trend data
+    const metricQuarterMap = new Map<string, Map<string, Map<string, number>>>();
+    for (const row of qTsRows ?? []) {
+      if (!metricQuarterMap.has(row.metric_name)) {
+        metricQuarterMap.set(row.metric_name, new Map());
+      }
+      const periodKey = `${row.fiscal_year} Q${row.fiscal_quarter}`;
+      const qMap = metricQuarterMap.get(row.metric_name)!;
+      if (!qMap.has(periodKey)) {
+        qMap.set(periodKey, new Map());
+      }
+      qMap.get(periodKey)!.set(row.ticker, row.metric_value);
+    }
+
+    for (const [metric, qMap] of metricQuarterMap) {
+      const periods = Array.from(qMap.keys()).sort((a, b) => {
+        const [aY, aQ] = a.split(" Q").map(Number);
+        const [bY, bQ] = b.split(" Q").map(Number);
+        return (aY * 10 + aQ) - (bY * 10 + bQ);
+      });
+      quarterlyTrendData[metric] = periods.map((period) => {
+        const tickerVals = qMap.get(period)!;
+        const entry: Record<string, string | number | null> = { period };
+        for (const t of tickers) {
+          entry[t] = tickerVals.get(t) ?? null;
+        }
+        return entry as { period: string; [ticker: string]: string | number | null };
       });
     }
 
@@ -248,6 +289,7 @@ export default async function SectorDetailPage({ params }: PageProps) {
           {/* Trend Charts */}
           <SectorTrendCharts
             trendData={trendData}
+            quarterlyTrendData={quarterlyTrendData}
             availableMetrics={sector.key_metrics}
             tickers={tickers}
           />

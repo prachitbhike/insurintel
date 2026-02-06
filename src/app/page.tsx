@@ -16,7 +16,6 @@ import {
 } from "@/components/dashboard/benchmark-strip";
 import { SectorToggle } from "@/components/dashboard/sector-toggle";
 import { type LatestMetric } from "@/types/database";
-import { formatMetricValue } from "@/lib/metrics/formatters";
 import {
   aggregateIndustryByYear,
   aggregateSectorByYear,
@@ -31,6 +30,7 @@ const KEY_METRICS = [
   "expense_ratio",
   "premium_growth_yoy",
   "roe",
+  "medical_loss_ratio",
 ];
 
 async function getOverviewData() {
@@ -81,10 +81,16 @@ async function getOverviewData() {
       "roe",
     ]);
 
-    const sectorExpenseTrends = aggregateSectorByYear(
-      industryTimeseries,
-      "expense_ratio"
-    );
+    // Build sparkline trends for each unique primary opportunity metric across sectors
+    const sparklineMetrics = new Set(SECTORS.map((s) => s.opportunity_metrics[0].metric));
+    const sectorSparklineTrends: Record<string, Record<string, number[]>> = {};
+    for (const metric of sparklineMetrics) {
+      const byMetric = aggregateSectorByYear(industryTimeseries, metric);
+      for (const [sectorName, values] of Object.entries(byMetric)) {
+        if (!sectorSparklineTrends[sectorName]) sectorSparklineTrends[sectorName] = {};
+        sectorSparklineTrends[sectorName][metric] = values;
+      }
+    }
 
     const bestExpenseRatioValue = expenseRatios.length > 0
       ? Math.min(...expenseRatios.map((e) => e.metric_value))
@@ -190,7 +196,7 @@ async function getOverviewData() {
       efficiencyData,
       growthData,
       sectorOverviews,
-      sectorExpenseTrends,
+      sectorSparklineTrends,
       disruptionTargets,
       benchmarks,
     };
@@ -204,7 +210,7 @@ async function getOverviewData() {
       efficiencyData: [],
       growthData: [],
       sectorOverviews: [],
-      sectorExpenseTrends: {} as Record<string, number[]>,
+      sectorSparklineTrends: {} as Record<string, Record<string, number[]>>,
       disruptionTargets: [],
       benchmarks: [],
     };
@@ -281,28 +287,34 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <section className="py-14 border-b border-border/40 animate-fade-up delay-2">
           <div className="flex items-baseline gap-3 mb-5">
             <h2 className="text-2xl font-display tracking-tight">Sector Opportunities</h2>
-            <span className="text-xs text-muted-foreground">Higher expense ratio = more automation upside</span>
+            <span className="text-xs text-muted-foreground">Key metrics by sector</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {SECTORS.map((sector) => {
               const overview = overviewData.sectorOverviews.find(
                 (s) => s.sector === sector.name
               );
+              const [om1, om2] = sector.opportunity_metrics;
+              const sparklineMetric = om1.metric;
+              const sparkline =
+                overviewData.sectorSparklineTrends[sector.name]?.[sparklineMetric] ?? [];
               return (
                 <SectorOpportunityCard
                   key={sector.slug}
                   sector={sector.name}
                   label={sector.label}
                   companyCount={overview?.companyCount ?? 0}
-                  avgExpenseRatio={
-                    overview?.averages["expense_ratio"] ?? null
-                  }
-                  premiumGrowth={
-                    overview?.averages["premium_growth_yoy"] ?? null
-                  }
-                  expenseRatioTrend={
-                    overviewData.sectorExpenseTrends[sector.name] ?? []
-                  }
+                  metric1={{
+                    name: om1.metric,
+                    label: om1.label,
+                    value: overview?.averages[om1.metric] ?? null,
+                  }}
+                  metric2={{
+                    name: om2.metric,
+                    label: om2.label,
+                    value: overview?.averages[om2.metric] ?? null,
+                  }}
+                  sparklineTrend={sparkline}
                   color={sector.color.replace("bg-", "var(--chart-1)")}
                 />
               );

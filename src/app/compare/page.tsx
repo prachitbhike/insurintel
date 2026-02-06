@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAllCompanies } from "@/lib/queries/companies";
 import { getComparisonData } from "@/lib/queries/compare";
+import { computeDynamicPresets, type ComparisonPreset } from "@/lib/queries/presets";
 import { ComparePageClient } from "@/components/compare/compare-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,15 +26,20 @@ async function CompareContent({ searchParams }: PageProps) {
 
   let allCompanies: { ticker: string; name: string; sector: string }[] = [];
   let initialData = null;
+  let dynamicPresets: ComparisonPreset[] = [];
 
   try {
     const supabase = await createClient();
-    const companies = await getAllCompanies(supabase);
+    const [companies, presets] = await Promise.all([
+      getAllCompanies(supabase),
+      computeDynamicPresets(supabase),
+    ]);
     allCompanies = companies.map((c) => ({
       ticker: c.ticker,
       name: c.name,
       sector: c.sector,
     }));
+    dynamicPresets = presets;
 
     if (initialTickers.length > 0) {
       initialData = await getComparisonData(supabase, initialTickers);
@@ -47,6 +53,7 @@ async function CompareContent({ searchParams }: PageProps) {
       allCompanies={allCompanies}
       initialData={initialData}
       initialTickers={initialTickers}
+      dynamicPresets={dynamicPresets}
     />
   );
 }

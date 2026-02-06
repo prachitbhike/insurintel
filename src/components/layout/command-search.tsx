@@ -42,6 +42,25 @@ export function CommandSearch() {
     [router]
   );
 
+  const handlePageSelect = useCallback(
+    (href: string) => {
+      setOpen(false);
+      router.push(href);
+    },
+    [router]
+  );
+
+  const pages = [
+    { name: "Overview", href: "/" },
+    { name: "Companies", href: "/companies" },
+    { name: "Sectors", href: "/sectors" },
+    { name: "Opportunities", href: "/opportunities" },
+    { name: "Compare", href: "/compare" },
+    { name: "Learn / Glossary", href: "/learn" },
+    { name: "Value Chain", href: "/value-chain" },
+    { name: "Filing Tracker", href: "/filings" },
+  ];
+
   const sectorBadgeColor: Record<Sector, string> = {
     "P&C": "text-blue-600 dark:text-blue-400",
     Life: "text-emerald-600 dark:text-emerald-400",
@@ -59,7 +78,19 @@ export function CommandSearch() {
     >
       <CommandInput placeholder="Search companies..." />
       <CommandList>
-        <CommandEmpty>No companies found.</CommandEmpty>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandGroup heading="Pages">
+          {pages.map((page) => (
+            <CommandItem
+              key={page.href}
+              value={page.name}
+              onSelect={() => handlePageSelect(page.href)}
+            >
+              <span className="text-sm">{page.name}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground font-mono">{page.href}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
         {companiesBySector.map((group) => (
           <CommandGroup key={group.slug} heading={group.label}>
             {group.companies.map((c) => (

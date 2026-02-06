@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -9,10 +10,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LineChartComponent } from "@/components/charts/line-chart";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { type MetricTimeseries } from "@/types/database";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
-import { formatMetricValue, formatChartTick } from "@/lib/metrics/formatters";
+import { formatMetricValue, formatChartTick, periodLabel, periodSortKey } from "@/lib/metrics/formatters";
 import { type ChartConfig } from "@/components/ui/chart";
+import { ExportButtonGroup } from "@/components/ui/export-button-group";
+import { exportChartAsPNG } from "@/lib/export/chart-png";
 
 const CHART_COLORS = [
   "var(--chart-1)",
@@ -45,20 +49,34 @@ export function ComparisonChart({
   selectedMetric,
   onMetricChange,
 }: ComparisonChartProps) {
-  const tsData = timeseries[selectedMetric] ?? [];
+  const [periodType, setPeriodType] = useState<"annual" | "quarterly">("annual");
+
+  const allTsData = timeseries[selectedMetric] ?? [];
+  const tsData = allTsData.filter((d) =>
+    periodType === "annual"
+      ? d.fiscal_quarter == null
+      : d.fiscal_quarter != null
+  );
   const def = METRIC_DEFINITIONS[selectedMetric];
   const unit = def?.unit ?? "number";
 
-  // Build chart data grouped by year
-  const yearSet = new Set<number>();
-  for (const d of tsData) yearSet.add(d.fiscal_year);
-  const years = [...yearSet].sort();
+  // Build chart data grouped by period
+  const periodSet = new Set<string>();
+  const sortKeys = new Map<string, number>();
+  for (const d of tsData) {
+    const label = periodLabel(d.fiscal_year, d.fiscal_quarter);
+    periodSet.add(label);
+    sortKeys.set(label, periodSortKey(d.fiscal_year, d.fiscal_quarter));
+  }
+  const periods = [...periodSet].sort(
+    (a, b) => (sortKeys.get(a) ?? 0) - (sortKeys.get(b) ?? 0)
+  );
 
-  const chartData = years.map((year) => {
-    const point: Record<string, string | number | null> = { year: String(year) };
+  const chartData = periods.map((period) => {
+    const point: Record<string, string | number | null> = { period };
     for (const c of companies) {
       const entry = tsData.find(
-        (d) => d.fiscal_year === year && d.ticker === c.ticker
+        (d) => periodLabel(d.fiscal_year, d.fiscal_quarter) === period && d.ticker === c.ticker
       );
       point[c.ticker] = entry?.metric_value ?? null;
     }
@@ -78,11 +96,21 @@ export function ComparisonChart({
   const tooltipFormatter = (v: number) =>
     formatMetricValue(selectedMetric, v);
 
+  const handlePNG = async () => {
+    const el = document.querySelector("[data-chart-export='comparison-chart']");
+    if (el instanceof HTMLElement) return exportChartAsPNG(el, "trend-comparison.png");
+    return false;
+  };
+
   return (
-    <Card>
+    <Card className="group">
       <CardHeader className="flex flex-row items-center justify-between gap-4">
         <div>
-          <CardTitle>Trend Comparison</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Trend Comparison</CardTitle>
+            <ExportButtonGroup onPNG={handlePNG} />
+            <PeriodSelector value={periodType} onValueChange={setPeriodType} />
+          </div>
           {def && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {def.label}{unitLabel ? ` (${unitLabel})` : ""}
@@ -107,11 +135,11 @@ export function ComparisonChart({
           </SelectContent>
         </Select>
       </CardHeader>
-      <CardContent>
+      <CardContent data-chart-export="comparison-chart">
         {chartData.length > 0 ? (
           <LineChartComponent
             data={chartData}
-            xKey="year"
+            xKey="period"
             dataKeys={companies.map((c) => c.ticker)}
             config={config}
             height={350}

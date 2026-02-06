@@ -342,27 +342,31 @@ async function main() {
       const dedupedMetrics = [...dedupMap.values()];
 
       // YoY growth — computed AFTER dedup so we use the same values that get stored
-      const annualYears = [...new Set(
-        dedupedMetrics
-          .filter((m) => m.period_type === "annual" && m.metric_name === "net_premiums_earned")
-          .map((m) => m.fiscal_year)
-      )].sort();
-      for (let j = 1; j < annualYears.length; j++) {
-        const curr = dedupedMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j] && m.period_type === "annual");
-        const prev = dedupedMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j - 1] && m.period_type === "annual");
-        if (curr && prev && prev.value !== 0) {
-          dedupedMetrics.push({
-            metric_name: "premium_growth_yoy",
-            value: ((curr.value - prev.value) / Math.abs(prev.value)) * 100,
-            unit: "percent",
-            period_type: "annual",
-            fiscal_year: annualYears[j],
-            fiscal_quarter: null,
-            period_start_date: null,
-            period_end_date: curr.period_end_date,
-            accession_number: "derived",
-            filed_at: new Date().toISOString(),
-          });
+      // Only for P&C and Reinsurance (underwriting sectors)
+      const premiumGrowthSectors = ["P&C", "Reinsurance"];
+      if (premiumGrowthSectors.includes(company.sector)) {
+        const annualYears = [...new Set(
+          dedupedMetrics
+            .filter((m) => m.period_type === "annual" && m.metric_name === "net_premiums_earned")
+            .map((m) => m.fiscal_year)
+        )].sort();
+        for (let j = 1; j < annualYears.length; j++) {
+          const curr = dedupedMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j] && m.period_type === "annual");
+          const prev = dedupedMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j - 1] && m.period_type === "annual");
+          if (curr && prev && prev.value !== 0) {
+            dedupedMetrics.push({
+              metric_name: "premium_growth_yoy",
+              value: ((curr.value - prev.value) / Math.abs(prev.value)) * 100,
+              unit: "percent",
+              period_type: "annual",
+              fiscal_year: annualYears[j],
+              fiscal_quarter: null,
+              period_start_date: null,
+              period_end_date: curr.period_end_date,
+              accession_number: "derived",
+              filed_at: new Date().toISOString(),
+            });
+          }
         }
       }
 

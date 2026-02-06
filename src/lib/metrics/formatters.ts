@@ -119,6 +119,14 @@ export function getSharedUnit(metricNames: string[]): string | null {
   return units.every((u) => u === units[0]) ? units[0] : null;
 }
 
+export function periodLabel(fiscalYear: number, fiscalQuarter: number | null): string {
+  return fiscalQuarter ? `${fiscalYear} Q${fiscalQuarter}` : String(fiscalYear);
+}
+
+export function periodSortKey(fiscalYear: number, fiscalQuarter: number | null): number {
+  return fiscalYear * 10 + (fiscalQuarter ?? 0);
+}
+
 export function formatChangePct(value: number | null | undefined): string {
   if (value == null) return "N/A";
   const sign = value >= 0 ? "+" : "";

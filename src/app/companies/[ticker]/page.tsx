@@ -13,11 +13,14 @@ import { MetricCharts } from "@/components/company-detail/metric-charts";
 import { PeerComparison } from "@/components/company-detail/peer-comparison";
 import { FinancialTable } from "@/components/company-detail/financial-table";
 import { QuickTake } from "@/components/company-detail/quick-take";
+import { FounderInsights } from "@/components/company-detail/founder-insights";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
+import { computeProspectScore } from "@/lib/scoring/prospect-score";
+import { generateFounderNarrative } from "@/lib/scoring/founder-narrative";
 import { type KpiValue, type TimeseriesPoint, type PeerComparison as PeerComparisonType, type FinancialRow } from "@/types/company";
 import { COMPANIES_SEED } from "@/lib/data/companies-seed";
-import { type Sector } from "@/types/database";
+import { type Sector, type SectorAverage } from "@/types/database";
 
 const sectorTopBorder: Record<Sector, string> = {
   "P&C": "border-t-blue-500",
@@ -119,11 +122,14 @@ export default async function CompanyDetailPage({ params }: PageProps) {
 
   let company;
   let kpis: KpiValue[] = [];
-  let timeseries: Record<string, TimeseriesPoint[]> = {};
+  const timeseries: Record<string, TimeseriesPoint[]> = {};
   let peerComparisons: PeerComparisonType[] = [];
   let annualFinancials: FinancialRow[] = [];
   let quarterlyFinancials: FinancialRow[] = [];
   let financialYears: string[] = [];
+  let quarterlyPeriods: string[] = [];
+  let founderNarrative: ReturnType<typeof generateFounderNarrative> | null = null;
+  let prospectScoreResult: ReturnType<typeof computeProspectScore> | null = null;
 
   try {
     const supabase = await createClient();
@@ -240,6 +246,49 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       values,
       unit: "USD",
     }));
+
+    // Sort quarterly periods descending (e.g. "2024 Q4", "2024 Q3", ...)
+    quarterlyPeriods = [...qYearSet].sort((a, b) => {
+      const [aY, aQ] = a.split(" Q").map(Number);
+      const [bY, bQ] = b.split(" Q").map(Number);
+      return (bY * 10 + bQ) - (aY * 10 + aQ);
+    });
+
+    // Compute prospect score + founder narrative
+    const metricsRecord: Record<string, number | null> = {};
+    for (const [name, m] of metricsByName) metricsRecord[name] = m.metric_value;
+    const sectorAvgsRecord: Record<string, number | null> = {};
+    const sectorMinsRecord: Record<string, number | null> = {};
+    const sectorMaxesRecord: Record<string, number | null> = {};
+    for (const avg of sectorAvgs as SectorAverage[]) {
+      sectorAvgsRecord[avg.metric_name] = avg.avg_value;
+      sectorMinsRecord[avg.metric_name] = avg.min_value;
+      sectorMaxesRecord[avg.metric_name] = avg.max_value;
+    }
+    const tsForScoring: Record<string, { fiscal_year: number; value: number }[]> = {};
+    for (const ts of tsData) {
+      if (!tsForScoring[ts.metric_name]) tsForScoring[ts.metric_name] = [];
+      tsForScoring[ts.metric_name].push({ fiscal_year: ts.fiscal_year, value: ts.metric_value });
+    }
+    prospectScoreResult = computeProspectScore({
+      companyId: company.id,
+      ticker: company.ticker,
+      name: company.name,
+      sector: company.sector as Sector,
+      metrics: metricsRecord,
+      sectorAverages: sectorAvgsRecord,
+      sectorMins: sectorMinsRecord,
+      sectorMaxes: sectorMaxesRecord,
+      timeseries: tsForScoring,
+    });
+    founderNarrative = generateFounderNarrative({
+      companyName: company.name,
+      ticker: company.ticker,
+      sector: company.sector as Sector,
+      metrics: metricsRecord,
+      sectorAverages: sectorAvgsRecord,
+      prospectScore: prospectScoreResult,
+    });
   } catch {
     const seed = COMPANIES_SEED.find((c) => c.ticker === decodedTicker);
     if (!seed) notFound();
@@ -299,6 +348,15 @@ export default async function CompanyDetailPage({ params }: PageProps) {
         <QuickTake sentences={quickTakeSentences} />
       </div>
 
+      {founderNarrative && (
+        <div className="animate-fade-up delay-1">
+          <FounderInsights
+            narrative={founderNarrative}
+            prospectScore={prospectScoreResult?.totalScore ?? null}
+          />
+        </div>
+      )}
+
       <div className="animate-fade-up delay-2">
         <KpiGrid kpis={kpis} sector={company.sector} />
       </div>
@@ -316,6 +374,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
           annualData={annualFinancials}
           quarterlyData={quarterlyFinancials}
           years={financialYears}
+          quarterlyPeriods={quarterlyPeriods}
         />
       </div>
     </div>

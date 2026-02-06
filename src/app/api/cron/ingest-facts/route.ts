@@ -98,7 +98,7 @@ export async function GET(request: Request) {
               m.fiscal_year === annualYears[i - 1] &&
               m.period_type === "annual"
           );
-          const growth = calculateYoyGrowth(currentYear, priorYear);
+          const growth = calculateYoyGrowth(currentYear, priorYear, company.sector);
           dedupedMetrics.push(...growth);
         }
 

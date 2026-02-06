@@ -127,11 +127,19 @@ export function calculateDerivedMetrics(
   return derived;
 }
 
+const PREMIUM_GROWTH_SECTORS = ["P&C", "Reinsurance"];
+
 export function calculateYoyGrowth(
   currentYearMetrics: ParsedMetric[],
-  priorYearMetrics: ParsedMetric[]
+  priorYearMetrics: ParsedMetric[],
+  sector?: string
 ): ParsedMetric[] {
   const derived: ParsedMetric[] = [];
+
+  // Only compute premium growth for P&C and Reinsurance (underwriting sectors)
+  if (sector && !PREMIUM_GROWTH_SECTORS.includes(sector)) {
+    return derived;
+  }
 
   const current = currentYearMetrics.find(
     (m) => m.metric_name === "net_premiums_earned"
