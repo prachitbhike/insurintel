@@ -384,7 +384,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary/60 mb-3">
               {sectorDetail ? sectorDetail.sector.label : "Market Intelligence"}
             </p>
-            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+            <h1 className="text-3xl font-display tracking-tight md:text-4xl">
               {sectorDetail
                 ? sectorDetail.sector.label
                 : "Insurance Industry Dashboard"}
@@ -452,9 +452,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         {isIndustryView && overviewData ? (
           <>
             {/* Industry Trends */}
-            <section className="py-10 border-b border-border/40">
+            <section className="py-14 border-b border-border/40 animate-fade-up delay-1">
               <div className="flex items-baseline gap-3 mb-5">
-                <h2 className="text-lg font-semibold tracking-tight">Industry Trends</h2>
+                <h2 className="text-2xl font-display tracking-tight">Industry Trends</h2>
                 <span className="text-xs text-muted-foreground">5-year averages across all tracked insurers</span>
               </div>
               <IndustryTrendCharts
@@ -464,9 +464,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </section>
 
             {/* Sector Opportunity Cards */}
-            <section className="py-10 border-b border-border/40">
+            <section className="py-14 border-b border-border/40 animate-fade-up delay-2">
               <div className="flex items-baseline gap-3 mb-5">
-                <h2 className="text-lg font-semibold tracking-tight">Sector Opportunities</h2>
+                <h2 className="text-2xl font-display tracking-tight">Sector Opportunities</h2>
                 <span className="text-xs text-muted-foreground">Higher expense ratio = more automation upside</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -497,12 +497,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </section>
 
             {/* Disruption Targets */}
-            <section className="py-10 border-b border-border/40">
+            <section className="py-14 border-b border-border/40 animate-fade-up delay-3">
               <DisruptionTargetsTable targets={overviewData.disruptionTargets} />
             </section>
 
             {/* Benchmarks */}
-            <section className="py-10 pb-14">
+            <section className="py-14 animate-fade-up delay-4">
               <BenchmarkStrip benchmarks={overviewData.benchmarks} />
             </section>
           </>

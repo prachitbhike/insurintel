@@ -70,8 +70,8 @@ const XBRL_CONCEPTS = [
   { metric_name: "total_assets", aliases: ["Assets"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "total_liabilities", aliases: ["Liabilities"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "eps", aliases: ["EarningsPerShareDiluted", "EarningsPerShareBasic"], unit_key: "USD/shares", taxonomy: "us-gaap" },
-  { metric_name: "shares_outstanding", aliases: ["CommonStockSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "WeightedAverageNumberOfSharesOutstandingBasic"], unit_key: "shares", taxonomy: "us-gaap" },
   { metric_name: "shares_outstanding", aliases: ["EntityCommonStockSharesOutstanding"], unit_key: "shares", taxonomy: "dei" },
+  { metric_name: "shares_outstanding", aliases: ["CommonStockSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "WeightedAverageNumberOfSharesOutstandingBasic"], unit_key: "shares", taxonomy: "us-gaap" },
   { metric_name: "investment_income", aliases: ["NetInvestmentIncome", "InvestmentIncomeNet", "InvestmentIncomeInterestAndDividend"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "total_debt", aliases: ["LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebtNoncurrent", "DebtInstrumentCarryingAmount", "DebtLongtermAndShorttermCombinedAmount", "DebtAndCapitalLeaseObligations", "SeniorLongTermNotes", "UnsecuredDebt", "JuniorSubordinatedNotes"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "revenue", aliases: ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "HealthCareOrganizationRevenue"], unit_key: "USD", taxonomy: "us-gaap" },
@@ -171,9 +171,14 @@ function parseFacts(facts: Record<string, unknown>): ParsedMetric[] {
     if (deduped.size === 0) continue;
 
     for (const entry of deduped.values()) {
-      // Use end date year as the actual fiscal year (not entry.fy which
-      // is the filing year and tags all comparative data the same)
-      const endYear = parseInt(entry.end.substring(0, 4), 10);
+      // For us-gaap: use end date year as the actual fiscal year (not entry.fy
+      // which is the filing year and tags all comparative data the same).
+      // For DEI: use entry.fy because DEI cover page dates (e.g., 2025-01-31)
+      // don't represent the fiscal period end.
+      const endYear =
+        concept.taxonomy === "dei"
+          ? entry.fy
+          : parseInt(entry.end.substring(0, 4), 10);
       if (endYear < minYear) continue;
 
       const isAnnual = entry.form === "10-K";

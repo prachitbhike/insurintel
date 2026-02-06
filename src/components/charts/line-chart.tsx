@@ -15,6 +15,7 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import type { ReactNode } from "react";
 
 interface LineChartProps {
   data: Record<string, string | number | null>[];
@@ -24,6 +25,8 @@ interface LineChartProps {
   height?: number;
   showGrid?: boolean;
   showLegend?: boolean;
+  yAxisTickFormatter?: (value: number) => string;
+  tooltipFormatter?: (value: number, name: string) => ReactNode;
 }
 
 export function LineChartComponent({
@@ -34,6 +37,8 @@ export function LineChartComponent({
   height = 300,
   showGrid = true,
   showLegend = true,
+  yAxisTickFormatter,
+  tooltipFormatter,
 }: LineChartProps) {
   return (
     <ChartContainer config={config} className="w-full" style={{ height }}>
@@ -45,7 +50,7 @@ export function LineChartComponent({
           <CartesianGrid
             vertical={false}
             strokeDasharray="3 3"
-            className="stroke-border/50"
+            className="stroke-border/40"
           />
         )}
         <XAxis
@@ -59,9 +64,21 @@ export function LineChartComponent({
           tickLine={false}
           axisLine={false}
           className="text-xs fill-muted-foreground"
-          width={54}
+          width={56}
+          tickFormatter={yAxisTickFormatter as (value: string | number) => string}
         />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={
+                tooltipFormatter
+                  ? (value, name) =>
+                      tooltipFormatter(value as number, name as string)
+                  : undefined
+              }
+            />
+          }
+        />
         {showLegend && dataKeys.length > 1 && (
           <ChartLegend content={<ChartLegendContent />} />
         )}
@@ -71,13 +88,13 @@ export function LineChartComponent({
             type="monotone"
             dataKey={key}
             stroke={`var(--color-${key})`}
-            strokeWidth={2.5}
+            strokeWidth={2}
             dot={{
-              r: 3.5,
-              strokeWidth: 2,
+              r: 3,
+              strokeWidth: 1.5,
               fill: "var(--color-background)",
             }}
-            activeDot={{ r: 5, strokeWidth: 2 }}
+            activeDot={{ r: 4.5, strokeWidth: 1.5 }}
             connectNulls
           />
         ))}

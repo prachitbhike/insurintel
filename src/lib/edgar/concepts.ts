@@ -70,6 +70,15 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
     taxonomy: "us-gaap",
   },
   {
+    // DEI taxonomy fallback for shares — covers companies that only report via dei.
+    // Listed BEFORE us-gaap so that us-gaap values win in the dedup step (later entry
+    // overwrites with >=).
+    metric_name: "shares_outstanding",
+    aliases: ["EntityCommonStockSharesOutstanding"],
+    unit_key: "shares",
+    taxonomy: "dei",
+  },
+  {
     metric_name: "shares_outstanding",
     aliases: [
       "CommonStockSharesOutstanding",
@@ -78,13 +87,6 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
     ],
     unit_key: "shares",
     taxonomy: "us-gaap",
-  },
-  {
-    // DEI taxonomy fallback for shares — covers companies that only report via dei
-    metric_name: "shares_outstanding",
-    aliases: ["EntityCommonStockSharesOutstanding"],
-    unit_key: "shares",
-    taxonomy: "dei",
   },
   {
     metric_name: "investment_income",

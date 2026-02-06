@@ -7,26 +7,31 @@ import { type Sector } from "@/types/database";
 import { getSectorSlug } from "@/lib/data/sectors";
 import { cn } from "@/lib/utils";
 
-const sectorAccent: Record<Sector, { border: string; spark: string }> = {
+const sectorAccent: Record<Sector, { border: string; spark: string; gradient: string }> = {
   "P&C": {
     border: "border-l-blue-500",
     spark: "hsl(217 91% 60%)",
+    gradient: "from-blue-500/[0.04]",
   },
   Life: {
     border: "border-l-emerald-500",
     spark: "hsl(160 84% 39%)",
+    gradient: "from-emerald-500/[0.04]",
   },
   Health: {
     border: "border-l-violet-500",
     spark: "hsl(263 70% 50%)",
+    gradient: "from-violet-500/[0.04]",
   },
   Reinsurance: {
     border: "border-l-amber-500",
     spark: "hsl(38 92% 50%)",
+    gradient: "from-amber-500/[0.04]",
   },
   Brokers: {
     border: "border-l-rose-500",
     spark: "hsl(347 77% 50%)",
+    gradient: "from-rose-500/[0.04]",
   },
 };
 
@@ -54,9 +59,11 @@ export function SectorOpportunityCard({
     <Link href={`/?sector=${getSectorSlug(sector)}`} scroll={false} className="group">
       <Card
         className={cn(
-          "border-l-[3px] shadow-sm transition-all duration-150 h-full",
-          "group-hover:shadow-md group-hover:border-foreground/15",
-          accent.border
+          "border-l-[3px] shadow-sm transition-all duration-200 h-full",
+          "group-hover:shadow-md group-hover:border-foreground/15 group-hover:-translate-y-0.5",
+          "bg-gradient-to-br to-transparent",
+          accent.border,
+          accent.gradient
         )}
       >
         <CardContent className="pt-4 pb-3.5 px-4 space-y-3">
@@ -71,8 +78,8 @@ export function SectorOpportunityCard({
               <Sparkline
                 data={expenseRatioTrend}
                 color={accent.spark}
-                height={26}
-                width={64}
+                height={36}
+                width={80}
               />
             )}
           </div>
@@ -81,7 +88,7 @@ export function SectorOpportunityCard({
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 <MetricLabel metricName="expense_ratio" label="Expense Ratio" className="text-[10px]" iconClassName="h-2.5 w-2.5" />
               </p>
-              <p className="text-base font-bold tabular-nums font-mono mt-0.5">
+              <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
                 {formatMetricValue("expense_ratio", avgExpenseRatio)}
               </p>
             </div>
@@ -89,7 +96,7 @@ export function SectorOpportunityCard({
               <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 <MetricLabel metricName="premium_growth_yoy" label="Premium Growth" className="text-[10px]" iconClassName="h-2.5 w-2.5" />
               </p>
-              <p className="text-base font-bold tabular-nums font-mono mt-0.5">
+              <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
                 {formatMetricValue("premium_growth_yoy", premiumGrowth)}
               </p>
             </div>

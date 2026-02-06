@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import type { ReactNode } from "react";
 import {
   Area,
   AreaChart as RechartsAreaChart,
@@ -26,6 +27,8 @@ interface AreaChartProps {
   showGrid?: boolean;
   stacked?: boolean;
   showLegend?: boolean;
+  yAxisTickFormatter?: (value: number) => string;
+  tooltipFormatter?: (value: number, name: string) => ReactNode;
 }
 
 export function AreaChartComponent({
@@ -37,6 +40,8 @@ export function AreaChartComponent({
   showGrid = true,
   stacked = false,
   showLegend = true,
+  yAxisTickFormatter,
+  tooltipFormatter,
 }: AreaChartProps) {
   const chartId = useId().replace(/:/g, "");
 
@@ -73,7 +78,7 @@ export function AreaChartComponent({
           <CartesianGrid
             vertical={false}
             strokeDasharray="3 3"
-            className="stroke-border/50"
+            className="stroke-border/40"
           />
         )}
         <XAxis
@@ -87,9 +92,21 @@ export function AreaChartComponent({
           tickLine={false}
           axisLine={false}
           className="text-xs fill-muted-foreground"
-          width={54}
+          width={56}
+          tickFormatter={yAxisTickFormatter as (value: string | number) => string}
         />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={
+                tooltipFormatter
+                  ? (value, name) =>
+                      tooltipFormatter(value as number, name as string)
+                  : undefined
+              }
+            />
+          }
+        />
         {showLegend && dataKeys.length > 1 && (
           <ChartLegend content={<ChartLegendContent />} />
         )}

@@ -38,8 +38,15 @@ export function KpiCard({
         ? TrendingDown
         : Minus;
 
+  const borderColor =
+    trend === "positive"
+      ? "border-l-positive"
+      : trend === "negative"
+        ? "border-l-negative"
+        : "border-l-border";
+
   return (
-    <Card className={cn("relative", className)}>
+    <Card className={cn("relative border-l-[3px]", borderColor, className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}

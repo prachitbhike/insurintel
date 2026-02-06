@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LineChartComponent } from "@/components/charts/line-chart";
 import { AreaChartComponent } from "@/components/charts/area-chart";
 import { BarChartComponent } from "@/components/charts/bar-chart";
 import { type TimeseriesPoint } from "@/types/company";
 import { type ChartConfig } from "@/components/ui/chart";
+import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
+import { formatMetricValue, formatChartTick } from "@/lib/metrics/formatters";
 
 interface MetricChartsProps {
   timeseries: Record<string, TimeseriesPoint[]>;
@@ -51,6 +54,25 @@ const CHART_COLORS = [
   "var(--chart-4)",
 ];
 
+const UNIT_LABELS: Record<string, string> = {
+  currency: "USD",
+  percent: "%",
+  ratio: "Ratio",
+  per_share: "Per Share",
+  number: "",
+};
+
+/** Group metrics by their unit type so same-scale metrics share a chart */
+function groupByUnit(metricNames: string[]): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  for (const m of metricNames) {
+    const unit = METRIC_DEFINITIONS[m]?.unit ?? "number";
+    if (!groups.has(unit)) groups.set(unit, []);
+    groups.get(unit)!.push(m);
+  }
+  return groups;
+}
+
 export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
   const applicableTabs = CHART_TABS.filter((t) => t.sectors.includes(sector));
   const [activeTab, setActiveTab] = useState(applicableTabs[0]?.value ?? "profitability");
@@ -75,57 +97,90 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
               (m) => timeseries[m] && timeseries[m].length > 0
             );
 
-            // Build chart data: merge all metrics by fiscal_year
-            const yearSet = new Set<number>();
-            for (const m of availableMetrics) {
-              for (const p of timeseries[m]) yearSet.add(p.fiscal_year);
-            }
-            const years = [...yearSet].sort();
-
-            const chartData = years.map((year) => {
-              const point: Record<string, string | number | null> = {
-                year: String(year),
-              };
-              for (const m of availableMetrics) {
-                const entry = timeseries[m].find(
-                  (p) => p.fiscal_year === year
-                );
-                point[m] = entry?.value ?? null;
-              }
-              return point;
-            });
-
-            const config: ChartConfig = {};
-            availableMetrics.forEach((m, i) => {
-              config[m] = {
-                label: m.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-                color: CHART_COLORS[i % CHART_COLORS.length],
-              };
-            });
-
-            return (
-              <TabsContent key={tab.value} value={tab.value}>
-                {availableMetrics.length === 0 ? (
+            if (availableMetrics.length === 0) {
+              return (
+                <TabsContent key={tab.value} value={tab.value}>
                   <p className="text-sm text-muted-foreground py-8 text-center">
                     No data available for this category.
                   </p>
-                ) : tab.chartType === "bar" ? (
-                  <BarChartComponent
-                    data={chartData}
-                    xKey="year"
-                    dataKeys={availableMetrics}
-                    config={config}
-                    height={350}
-                  />
-                ) : (
-                  <AreaChartComponent
-                    data={chartData}
-                    xKey="year"
-                    dataKeys={availableMetrics}
-                    config={config}
-                    height={350}
-                  />
-                )}
+                </TabsContent>
+              );
+            }
+
+            // Group metrics by unit type
+            const unitGroups = groupByUnit(availableMetrics);
+            const isSingleGroup = unitGroups.size === 1;
+
+            return (
+              <TabsContent key={tab.value} value={tab.value}>
+                <div className={isSingleGroup ? "" : "grid gap-4 md:grid-cols-2"}>
+                  {[...unitGroups.entries()].map(([unit, metrics]) => {
+                    // Build chart data: merge metrics by fiscal_year
+                    const yearSet = new Set<number>();
+                    for (const m of metrics) {
+                      for (const p of timeseries[m]) yearSet.add(p.fiscal_year);
+                    }
+                    const years = [...yearSet].sort();
+
+                    const chartData = years.map((year) => {
+                      const point: Record<string, string | number | null> = {
+                        year: String(year),
+                      };
+                      for (const m of metrics) {
+                        const entry = timeseries[m].find(
+                          (p) => p.fiscal_year === year
+                        );
+                        point[m] = entry?.value ?? null;
+                      }
+                      return point;
+                    });
+
+                    const config: ChartConfig = {};
+                    metrics.forEach((m, i) => {
+                      config[m] = {
+                        label: METRIC_DEFINITIONS[m]?.label ?? m.replace(/_/g, " "),
+                        color: CHART_COLORS[i % CHART_COLORS.length],
+                      };
+                    });
+
+                    const unitLabel = UNIT_LABELS[unit] ?? "";
+                    const tickFn = (v: number) => formatChartTick(v, unit);
+                    const tooltipFn = (v: number, name: string) =>
+                      formatMetricValue(name, v);
+
+                    // Choose chart height based on whether we're in a grid
+                    const chartHeight = isSingleGroup ? 350 : 280;
+
+                    // For single-group with all metrics, decide chart type from tab config
+                    // For multi-group sub-charts, always use the tab's chart type
+                    const ChartComponent =
+                      tab.chartType === "line"
+                        ? LineChartComponent
+                        : tab.chartType === "bar"
+                          ? BarChartComponent
+                          : AreaChartComponent;
+
+                    return (
+                      <div key={unit}>
+                        {!isSingleGroup && (
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            {metrics.map((m) => METRIC_DEFINITIONS[m]?.label ?? m).join(", ")}
+                            {unitLabel ? ` (${unitLabel})` : ""}
+                          </p>
+                        )}
+                        <ChartComponent
+                          data={chartData}
+                          xKey="year"
+                          dataKeys={metrics}
+                          config={config}
+                          height={chartHeight}
+                          yAxisTickFormatter={tickFn}
+                          tooltipFormatter={tooltipFn}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </TabsContent>
             );
           })}

@@ -17,6 +17,15 @@ import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { type KpiValue, type TimeseriesPoint, type PeerComparison as PeerComparisonType, type FinancialRow } from "@/types/company";
 import { COMPANIES_SEED } from "@/lib/data/companies-seed";
+import { type Sector } from "@/types/database";
+
+const sectorTopBorder: Record<Sector, string> = {
+  "P&C": "border-t-blue-500",
+  Life: "border-t-emerald-500",
+  Health: "border-t-violet-500",
+  Reinsurance: "border-t-amber-500",
+  Brokers: "border-t-rose-500",
+};
 
 export const revalidate = 3600;
 
@@ -259,11 +268,11 @@ export default async function CompanyDetailPage({ params }: PageProps) {
   );
 
   return (
-    <div className="container space-y-6 px-4 py-8 md:px-6">
+    <div className={`container space-y-10 px-4 py-8 md:px-6 border-t-[3px] ${sectorTopBorder[company.sector as Sector] ?? ""}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-4xl font-display tracking-tight">
               {company.ticker}
             </h1>
             <SectorBadge sector={company.sector} />
@@ -286,15 +295,23 @@ export default async function CompanyDetailPage({ params }: PageProps) {
         </Link>
       </div>
 
-      <QuickTake sentences={quickTakeSentences} />
+      <div className="animate-fade-up delay-1">
+        <QuickTake sentences={quickTakeSentences} />
+      </div>
 
-      <KpiGrid kpis={kpis} sector={company.sector} />
+      <div className="animate-fade-up delay-2">
+        <KpiGrid kpis={kpis} sector={company.sector} />
+      </div>
 
-      <PeerComparison comparisons={peerComparisons} ticker={company.ticker} />
+      <div className="animate-fade-up delay-3">
+        <PeerComparison comparisons={peerComparisons} ticker={company.ticker} />
+      </div>
 
-      <MetricCharts timeseries={timeseries} sector={company.sector} />
+      <div className="animate-fade-up delay-4">
+        <MetricCharts timeseries={timeseries} sector={company.sector} />
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-1">
+      <div className="animate-fade-up delay-5 grid gap-6 lg:grid-cols-1">
         <FinancialTable
           annualData={annualFinancials}
           quarterlyData={quarterlyFinancials}

@@ -20,7 +20,7 @@ export function BenchmarkStrip({ benchmarks }: BenchmarkStripProps) {
       <div className="flex items-baseline gap-3 mb-4">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-primary/60" />
-          <h2 className="text-lg font-semibold tracking-tight">
+          <h2 className="text-2xl font-display tracking-tight">
             Benchmark Targets
           </h2>
         </div>
@@ -37,7 +37,7 @@ export function BenchmarkStrip({ benchmarks }: BenchmarkStripProps) {
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               <MetricLabel metricName={b.metricName} label={b.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
             </p>
-            <p className="text-2xl font-bold tabular-nums font-mono tracking-tight">
+            <p className="text-2xl font-display tabular-nums tracking-tight">
               {formatMetricValue(b.metricName, b.value)}
             </p>
             <p className="text-[11px] text-muted-foreground">

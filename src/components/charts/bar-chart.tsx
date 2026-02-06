@@ -15,6 +15,7 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import type { ReactNode } from "react";
 
 interface BarChartProps {
   data: Record<string, string | number | null>[];
@@ -25,6 +26,8 @@ interface BarChartProps {
   layout?: "horizontal" | "vertical";
   stacked?: boolean;
   showLegend?: boolean;
+  yAxisTickFormatter?: (value: number) => string;
+  tooltipFormatter?: (value: number, name: string) => ReactNode;
 }
 
 export function BarChartComponent({
@@ -36,6 +39,8 @@ export function BarChartComponent({
   layout = "horizontal",
   stacked = false,
   showLegend = true,
+  yAxisTickFormatter,
+  tooltipFormatter,
 }: BarChartProps) {
   const isVertical = layout === "vertical";
 
@@ -50,7 +55,7 @@ export function BarChartComponent({
           horizontal={!isVertical}
           vertical={isVertical}
           strokeDasharray="3 3"
-          className="stroke-border/50"
+          className="stroke-border/40"
         />
         {isVertical ? (
           <>
@@ -60,6 +65,7 @@ export function BarChartComponent({
               axisLine={false}
               className="text-xs fill-muted-foreground"
               tickMargin={8}
+              tickFormatter={yAxisTickFormatter as (value: string | number) => string}
             />
             <YAxis
               type="category"
@@ -83,11 +89,23 @@ export function BarChartComponent({
               tickLine={false}
               axisLine={false}
               className="text-xs fill-muted-foreground"
-              width={54}
+              width={56}
+              tickFormatter={yAxisTickFormatter as (value: string | number) => string}
             />
           </>
         )}
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={
+                tooltipFormatter
+                  ? (value, name) =>
+                      tooltipFormatter(value as number, name as string)
+                  : undefined
+              }
+            />
+          }
+        />
         {showLegend && dataKeys.length > 1 && (
           <ChartLegend content={<ChartLegendContent />} />
         )}

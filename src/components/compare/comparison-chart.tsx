@@ -11,6 +11,7 @@ import {
 import { LineChartComponent } from "@/components/charts/line-chart";
 import { type MetricTimeseries } from "@/types/database";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
+import { formatMetricValue, formatChartTick } from "@/lib/metrics/formatters";
 import { type ChartConfig } from "@/components/ui/chart";
 
 const CHART_COLORS = [
@@ -20,6 +21,14 @@ const CHART_COLORS = [
   "var(--chart-4)",
   "var(--chart-5)",
 ];
+
+const UNIT_LABELS: Record<string, string> = {
+  currency: "USD",
+  percent: "%",
+  ratio: "Ratio",
+  per_share: "Per Share",
+  number: "",
+};
 
 interface ComparisonChartProps {
   companies: { ticker: string; name: string }[];
@@ -38,6 +47,7 @@ export function ComparisonChart({
 }: ComparisonChartProps) {
   const tsData = timeseries[selectedMetric] ?? [];
   const def = METRIC_DEFINITIONS[selectedMetric];
+  const unit = def?.unit ?? "number";
 
   // Build chart data grouped by year
   const yearSet = new Set<number>();
@@ -63,14 +73,10 @@ export function ComparisonChart({
     };
   });
 
-  // Unit label for context
-  const unitLabel = def?.unit === "currency"
-    ? "USD"
-    : def?.unit === "percent"
-      ? "%"
-      : def?.unit === "ratio"
-        ? "x"
-        : "";
+  const unitLabel = UNIT_LABELS[unit] ?? "";
+  const tickFormatter = (v: number) => formatChartTick(v, unit);
+  const tooltipFormatter = (v: number) =>
+    formatMetricValue(selectedMetric, v);
 
   return (
     <Card>
@@ -90,9 +96,11 @@ export function ComparisonChart({
           <SelectContent>
             {availableMetrics.map((m) => {
               const mDef = METRIC_DEFINITIONS[m];
+              const mUnit = UNIT_LABELS[mDef?.unit ?? ""] ?? "";
               return (
                 <SelectItem key={m} value={m}>
                   {mDef?.label ?? m.replace(/_/g, " ")}
+                  {mUnit ? ` (${mUnit})` : ""}
                 </SelectItem>
               );
             })}
@@ -107,6 +115,8 @@ export function ComparisonChart({
             dataKeys={companies.map((c) => c.ticker)}
             config={config}
             height={350}
+            yAxisTickFormatter={tickFormatter}
+            tooltipFormatter={tooltipFormatter}
           />
         ) : (
           <p className="text-sm text-muted-foreground py-8 text-center">

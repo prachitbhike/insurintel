@@ -60,7 +60,7 @@ export default async function CompaniesPage() {
         net_premiums_earned: cm?.get("net_premiums_earned") ?? null,
         premium_growth_yoy: cm?.get("premium_growth_yoy") ?? null,
         eps: cm?.get("eps") ?? null,
-        sparkline_data: sparklineByCompany.get(c.id) ?? [],
+        sparkline_data: (sparklineByCompany.get(c.id) ?? []).slice(-3),
       };
     });
   } catch {

@@ -1,10 +1,4 @@
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -20,30 +14,6 @@ interface HeroBenchmarksProps {
   totalAutomationTAM?: number | null;
 }
 
-const heroCards = [
-  {
-    key: "totalPremium" as const,
-    title: "Total Addressable Premium",
-    metricName: "net_premiums_earned",
-    tooltipFn: (n: number) =>
-      `Sum of net premiums earned across ${n} tracked insurers — not the entire market`,
-  },
-  {
-    key: "avgCombinedRatio" as const,
-    title: "Avg Combined Ratio",
-    metricName: "combined_ratio",
-    tooltipFn: () =>
-      "Industry average combined ratio — the efficiency bar your product needs to beat",
-  },
-  {
-    key: "avgExpenseRatio" as const,
-    title: "Avg Expense Ratio",
-    metricName: "expense_ratio",
-    tooltipFn: () =>
-      "Industry average expense ratio — where AI automation creates the biggest margin gains",
-  },
-];
-
 export function HeroBenchmarks({
   totalPremium,
   avgCombinedRatio,
@@ -51,41 +21,14 @@ export function HeroBenchmarks({
   trackedCompanies,
   totalAutomationTAM,
 }: HeroBenchmarksProps) {
-  const values = { totalPremium, avgCombinedRatio, avgExpenseRatio };
-
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {heroCards.map((card) => (
-        <Card
-          key={card.key}
-          className="border-border/60 bg-card/80 backdrop-blur-sm shadow-sm"
-        >
-          <CardHeader className="flex flex-row items-center justify-between pb-1">
-            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              {card.title}
-            </CardTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-3 w-3 text-muted-foreground/40 cursor-help shrink-0" />
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <p className="text-xs">{card.tooltipFn(trackedCompanies)}</p>
-              </TooltipContent>
-            </Tooltip>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold tracking-tight font-mono">
-              {formatMetricValue(card.metricName, values[card.key])}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-
-      <Card className="border-amber-500/30 bg-amber-500/[0.03] backdrop-blur-sm shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between pb-1">
-          <CardTitle className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
+    <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      {/* Left — Automation TAM centerpiece */}
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.03] p-6 flex flex-col justify-center">
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
             Automation TAM
-          </CardTitle>
+          </p>
           <Tooltip>
             <TooltipTrigger asChild>
               <Info className="h-3 w-3 text-amber-500/40 cursor-help shrink-0" />
@@ -96,13 +39,78 @@ export function HeroBenchmarks({
               </p>
             </TooltipContent>
           </Tooltip>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold tracking-tight font-mono text-amber-600 dark:text-amber-400">
-            {formatCurrency(totalAutomationTAM ?? 0)}
+        </div>
+        <p className="text-5xl md:text-6xl font-display tracking-tight text-amber-600 dark:text-amber-400">
+          {formatCurrency(totalAutomationTAM ?? 0)}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-md">
+          The total addressable savings if every tracked insurer matched the best-in-class expense ratio — the prize for automation founders.
+        </p>
+      </div>
+
+      {/* Right — compact metric rows */}
+      <div className="rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm divide-y divide-border/50">
+        <div className="px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Total Addressable Premium
+            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3 w-3 text-muted-foreground/40 cursor-help shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-xs">
+                  Sum of net premiums earned across {trackedCompanies} tracked insurers — not the entire market
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-2xl font-display tracking-tight mt-0.5">
+            {formatMetricValue("net_premiums_earned", totalPremium)}
+          </p>
+        </div>
+        <div className="px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Avg Combined Ratio
+            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3 w-3 text-muted-foreground/40 cursor-help shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-xs">
+                  Industry average combined ratio — the efficiency bar your product needs to beat
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <p className="text-2xl font-display tracking-tight mt-0.5">
+            {formatMetricValue("combined_ratio", avgCombinedRatio)}
+          </p>
+        </div>
+        <div className="px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Avg Expense Ratio
+            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3 w-3 text-muted-foreground/40 cursor-help shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-xs">
+                  Industry average expense ratio — where AI automation creates the biggest margin gains
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <p className="text-2xl font-display tracking-tight mt-0.5">
+            {formatMetricValue("expense_ratio", avgExpenseRatio)}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

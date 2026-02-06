@@ -119,7 +119,7 @@ export const columns: ColumnDef<CompanyListItem>[] = [
   },
   {
     id: "sparkline",
-    header: "5Y Trend",
+    header: "3Y Trend",
     cell: ({ row }) => {
       const data = row.original.sparkline_data;
       if (!data || data.length === 0) return <span className="text-muted-foreground text-xs">N/A</span>;

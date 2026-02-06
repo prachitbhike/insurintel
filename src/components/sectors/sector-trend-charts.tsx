@@ -25,7 +25,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
-import { formatMetricValue } from "@/lib/metrics/formatters";
+import { formatMetricValue, formatChartTick } from "@/lib/metrics/formatters";
 
 export interface SectorTrendData {
   [metricName: string]: { year: number; [ticker: string]: number | null }[];
@@ -134,7 +134,7 @@ export function SectorTrendCharts({
                 axisLine={false}
                 className="text-xs fill-muted-foreground"
                 tickFormatter={(v: number) =>
-                  formatMetricValue(selectedMetric, v)
+                  formatChartTick(v, def?.unit ?? "number")
                 }
               />
               <YAxis

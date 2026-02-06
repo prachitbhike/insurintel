@@ -39,9 +39,15 @@ export function parseCompanyFacts(facts: CompanyFacts): ParsedMetric[] {
     if (deduped.length === 0) continue;
 
     for (const entry of deduped) {
-      // Use end date year as the actual fiscal year (not entry.fy which
-      // is the filing year and tags all comparative data the same)
-      const endYear = parseInt(entry.end.substring(0, 4), 10);
+      // For us-gaap: use end date year as the actual fiscal year (not entry.fy
+      // which is the filing year and tags all comparative data the same).
+      // For DEI: use entry.fy because DEI cover page dates (e.g., 2025-01-31)
+      // don't represent the fiscal period end — they're the cover page date of
+      // a 10-K that covers the prior fiscal year.
+      const endYear =
+        concept.taxonomy === "dei"
+          ? entry.fy
+          : parseInt(entry.end.substring(0, 4), 10);
       const isAnnual = entry.form === "10-K";
       const fiscalQuarter = isAnnual ? null : parseFiscalQuarter(entry.fp);
 

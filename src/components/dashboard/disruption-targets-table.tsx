@@ -15,7 +15,6 @@ import { formatMetricValue, formatCurrency } from "@/lib/metrics/formatters";
 import { MetricLabel } from "@/components/ui/metric-label";
 import { type Sector } from "@/types/database";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 export interface DisruptionTarget {
   companyId: string;
@@ -36,11 +35,21 @@ interface DisruptionTargetsTableProps {
 export function DisruptionTargetsTable({
   targets,
 }: DisruptionTargetsTableProps) {
+  // Compute max values for inline bar normalization
+  const maxCombined = Math.max(
+    ...targets.map((t) => t.combinedRatio ?? 0),
+    1
+  );
+  const maxAutomation = Math.max(
+    ...targets.map((t) => t.automationSavings ?? 0),
+    1
+  );
+
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-1">
         <div className="flex items-baseline gap-3">
-          <CardTitle className="text-lg font-semibold tracking-tight">
+          <CardTitle className="text-2xl font-display tracking-tight">
             Disruption Targets
           </CardTitle>
           <span className="text-xs text-muted-foreground">
@@ -75,60 +84,91 @@ export function DisruptionTargetsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {targets.map((t, i) => (
-              <TableRow
-                key={t.companyId}
-                className={cn(
-                  i < 3 && "bg-destructive/[0.03]"
-                )}
-              >
-                <TableCell className="text-xs font-mono text-muted-foreground">
-                  {i + 1}
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/companies/${t.ticker.toLowerCase()}`}
-                    className="font-semibold text-[13px] hover:underline underline-offset-2"
-                  >
-                    {t.ticker}
-                  </Link>
-                  <span className="ml-1.5 text-[11px] text-muted-foreground hidden md:inline">
-                    {t.name}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <SectorBadge sector={t.sector} className="text-[10px]" />
-                </TableCell>
-                <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium">
-                  {formatMetricValue("combined_ratio", t.combinedRatio)}
-                </TableCell>
-                <TableCell className="text-right text-[13px] tabular-nums font-mono">
-                  {formatMetricValue("expense_ratio", t.expenseRatio)}
-                </TableCell>
-                <TableCell className="text-right text-[13px] tabular-nums font-mono">
-                  {formatMetricValue("roe", t.roe)}
-                </TableCell>
-                <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium text-amber-600 dark:text-amber-400">
-                  {t.automationSavings != null
-                    ? formatCurrency(t.automationSavings)
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end">
-                    {t.trend.length > 1 ? (
-                      <Sparkline
-                        data={t.trend}
-                        color="var(--chart-1)"
-                        height={22}
-                        width={56}
+            {targets.map((t, i) => {
+              // Heat-fade: top rows get deeper red tint, fading by position
+              const heatOpacity = Math.max(0, 0.06 - i * 0.006);
+              const combinedBarWidth =
+                t.combinedRatio != null
+                  ? (t.combinedRatio / maxCombined) * 100
+                  : 0;
+              const automationBarWidth =
+                t.automationSavings != null
+                  ? (t.automationSavings / maxAutomation) * 100
+                  : 0;
+
+              return (
+                <TableRow
+                  key={t.companyId}
+                  style={
+                    heatOpacity > 0
+                      ? { backgroundColor: `oklch(0.577 0.245 27.325 / ${heatOpacity})` }
+                      : undefined
+                  }
+                >
+                  <TableCell className="text-xs font-mono text-muted-foreground">
+                    {i + 1}
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/companies/${t.ticker.toLowerCase()}`}
+                      className="font-semibold text-[13px] hover:underline underline-offset-2"
+                    >
+                      {t.ticker}
+                    </Link>
+                    <span className="ml-1.5 text-[11px] text-muted-foreground hidden md:inline">
+                      {t.name}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <SectorBadge sector={t.sector} className="text-[10px]" />
+                  </TableCell>
+                  <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium">
+                    <span className="relative inline-flex items-center justify-end w-full">
+                      <span
+                        className="absolute right-0 top-0 bottom-0 rounded-sm bg-destructive/10"
+                        style={{ width: `${combinedBarWidth}%` }}
                       />
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">—</span>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                      <span className="relative">
+                        {formatMetricValue("combined_ratio", t.combinedRatio)}
+                      </span>
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right text-[13px] tabular-nums font-mono">
+                    {formatMetricValue("expense_ratio", t.expenseRatio)}
+                  </TableCell>
+                  <TableCell className="text-right text-[13px] tabular-nums font-mono">
+                    {formatMetricValue("roe", t.roe)}
+                  </TableCell>
+                  <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium text-amber-600 dark:text-amber-400">
+                    <span className="relative inline-flex items-center justify-end w-full">
+                      <span
+                        className="absolute right-0 top-0 bottom-0 rounded-sm bg-amber-500/10"
+                        style={{ width: `${automationBarWidth}%` }}
+                      />
+                      <span className="relative">
+                        {t.automationSavings != null
+                          ? formatCurrency(t.automationSavings)
+                          : "—"}
+                      </span>
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end">
+                      {t.trend.length > 1 ? (
+                        <Sparkline
+                          data={t.trend}
+                          color="var(--chart-1)"
+                          height={22}
+                          width={56}
+                        />
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>
