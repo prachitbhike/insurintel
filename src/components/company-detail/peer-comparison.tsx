@@ -10,7 +10,6 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   ChartContainer,
   ChartTooltip,
@@ -20,12 +19,10 @@ import {
 import { type PeerComparison as PeerComparisonType } from "@/types/company";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
-import { MetricLabel } from "@/components/ui/metric-label";
 import { ExportButtonGroup } from "@/components/ui/export-button-group";
 import { generateCSV, downloadCSV } from "@/lib/export/csv";
 import { copyTableToClipboard } from "@/lib/export/clipboard";
 import { exportChartAsPNG } from "@/lib/export/chart-png";
-import { cn } from "@/lib/utils";
 
 interface PeerComparisonProps {
   comparisons: PeerComparisonType[];
@@ -100,23 +97,22 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
     },
   };
 
-  const chartHeight = Math.max(220, chartData.length * 44 + 40);
+  const chartHeight = Math.max(160, chartData.length * 32 + 30);
 
   return (
-    <Card className="group">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="rounded-sm group">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
         <div>
           <div className="flex items-center gap-2">
-            <CardTitle>Peer Comparison</CardTitle>
+            <CardTitle className="text-sm">Peer Comparison</CardTitle>
             <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} onPNG={handlePNG} />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Performance relative to sector average — green = outperforming, red =
-            underperforming
+          <p className="text-[11px] text-muted-foreground">
+            Green = outperforming sector avg. Red = underperforming.
           </p>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="px-4 pb-4">
         {chartData.length > 0 && (
           <ChartContainer
             config={config}
@@ -131,8 +127,8 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
             >
               <CartesianGrid
                 horizontal={false}
-                strokeDasharray="3 3"
-                className="stroke-border/50"
+                strokeDasharray="2 6"
+                className="stroke-border/15"
               />
               <XAxis
                 type="number"
@@ -165,7 +161,7 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
                 strokeDasharray="4 4"
                 strokeWidth={1}
               />
-              <Bar dataKey="performance" radius={[0, 6, 6, 0]} maxBarSize={24}>
+              <Bar dataKey="performance" radius={[0, 2, 2, 0]} maxBarSize={20}>
                 {chartData.map((entry) => (
                   <Cell
                     key={entry.metric}
@@ -181,57 +177,6 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
             </BarChart>
           </ChartContainer>
         )}
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {comparisons.map((c) => {
-            const def = METRIC_DEFINITIONS[c.metric_name];
-            const hasBoth = c.company_value != null && c.sector_avg != null;
-            let isOutperforming: boolean | null = null;
-            if (hasBoth && c.sector_avg !== 0) {
-              const diff = c.company_value! - c.sector_avg!;
-              isOutperforming = def?.higher_is_better ? diff > 0 : diff < 0;
-            }
-
-            return (
-              <div
-                key={c.metric_name}
-                className="flex flex-col gap-1.5 rounded-lg border p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <MetricLabel
-                    metricName={c.metric_name}
-                    className="text-xs text-muted-foreground"
-                    iconClassName="h-2.5 w-2.5"
-                  />
-                  {c.rank != null && c.total != null && (
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] font-mono"
-                    >
-                      #{c.rank}/{c.total}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span
-                    className={cn(
-                      "text-lg font-semibold tabular-nums",
-                      isOutperforming === true && "text-positive",
-                      isOutperforming === false && "text-negative"
-                    )}
-                  >
-                    {formatMetricValue(c.metric_name, c.company_value)}
-                  </span>
-                  {c.sector_avg != null && (
-                    <span className="text-xs text-muted-foreground">
-                      avg {formatMetricValue(c.metric_name, c.sector_avg)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </CardContent>
     </Card>
   );

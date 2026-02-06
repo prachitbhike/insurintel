@@ -9,7 +9,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { ExportButtonGroup } from "@/components/ui/export-button-group";
 import { type FinancialRow } from "@/types/company";
@@ -61,58 +66,66 @@ export function FinancialTable({
   }, [getTableData, periodType]);
 
   return (
-    <Card className="group">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CardTitle>Financial Data</CardTitle>
-          <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
-        </div>
-        <PeriodSelector value={periodType} onValueChange={setPeriodType} />
-      </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[180px]">Metric</TableHead>
-              {displayYears.map((year) => (
-                <TableHead key={year} className="text-right min-w-[100px]">
-                  {year}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((row) => {
-              const def = METRIC_DEFINITIONS[row.metric_name];
-              return (
-                <TableRow key={row.metric_name}>
-                  <TableCell className="font-medium">
-                    {def?.label ?? row.metric_name.replace(/_/g, " ")}
-                  </TableCell>
+    <Accordion type="single" collapsible className="rounded-sm border bg-card text-card-foreground shadow-sm">
+      <AccordionItem value="financial-data" className="border-b-0">
+        <AccordionTrigger className="px-4 hover:no-underline">
+          <div className="flex flex-1 items-center justify-between pr-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold tracking-tight">Historical Financials</span>
+              <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
+            </div>
+            <div onClick={(e) => e.stopPropagation()}>
+              <PeriodSelector value={periodType} onValueChange={setPeriodType} />
+            </div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary/80">
+                  <TableHead className="min-w-[180px] font-mono text-[10px] uppercase tracking-[0.15em]">Metric</TableHead>
                   {displayYears.map((year) => (
-                    <TableCell key={year} className="text-right font-mono text-sm">
-                      {formatMetricValue(
-                        row.metric_name,
-                        row.values[year] ?? null
-                      )}
-                    </TableCell>
+                    <TableHead key={year} className="text-right min-w-[100px] font-mono text-[10px] uppercase tracking-[0.15em]">
+                      {periodType === "annual" ? `FY${year}` : year}
+                    </TableHead>
                   ))}
                 </TableRow>
-              );
-            })}
-            {data.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={displayYears.length + 1}
-                  className="text-center text-muted-foreground py-8"
-                >
-                  No financial data available.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {data.map((row) => {
+                  const def = METRIC_DEFINITIONS[row.metric_name];
+                  return (
+                    <TableRow key={row.metric_name}>
+                      <TableCell className="font-medium">
+                        {def?.label ?? row.metric_name.replace(/_/g, " ")}
+                      </TableCell>
+                      {displayYears.map((year) => (
+                        <TableCell key={year} className="text-right font-mono text-sm">
+                          {formatMetricValue(
+                            row.metric_name,
+                            row.values[year] ?? null
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })}
+                {data.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={displayYears.length + 1}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      No financial data available.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }

@@ -51,53 +51,53 @@ export function TechAdoptionSection({ signals }: TechAdoptionSectionProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Tech Adoption Signals</CardTitle>
+          <CardTitle>10-K Technology References</CardTitle>
           <TechAdoptionBadge classification={latest.classification} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Analysis of 10-K filing language for AI, ML, and automation references
+          Keyword frequency analysis of 10-K filing text for technology-related terms
           (FY{latest.fiscal_year})
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="rounded-lg border p-2.5">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Total Mentions
             </p>
-            <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
+            <p className="text-lg font-mono tabular-nums font-semibold mt-0.5">
               {latest.total_tech_mentions}
             </p>
           </div>
           <div className="rounded-lg border p-2.5">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Density Score
             </p>
-            <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
+            <p className="text-lg font-mono tabular-nums font-semibold mt-0.5">
               {latest.tech_density_score.toFixed(1)}
             </p>
           </div>
           <div className="rounded-lg border p-2.5">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               AI Mentions
             </p>
-            <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
+            <p className="text-lg font-mono tabular-nums font-semibold mt-0.5">
               {latest.ai_mention_count}
             </p>
           </div>
           <div className="rounded-lg border p-2.5">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Automation
             </p>
-            <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
+            <p className="text-lg font-mono tabular-nums font-semibold mt-0.5">
               {latest.automation_mention_count}
             </p>
           </div>
           <div className="rounded-lg border p-2.5">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               YoY Change
             </p>
-            <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
+            <p className="text-lg font-mono tabular-nums font-semibold mt-0.5">
               {latest.yoy_density_change != null
                 ? `${latest.yoy_density_change > 0 ? "+" : ""}${latest.yoy_density_change.toFixed(1)}`
                 : "—"}
@@ -145,7 +145,7 @@ export function TechAdoptionSection({ signals }: TechAdoptionSectionProps) {
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {latest.keyword_snippets.slice(0, 6).map((s, i) => (
                 <div key={i} className="rounded-md bg-muted/50 p-2">
-                  <span className="text-[10px] font-medium text-primary/60 uppercase tracking-wider">
+                  <span className="text-xs font-medium text-primary/60 uppercase tracking-wider">
                     {s.category}
                   </span>
                   <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">

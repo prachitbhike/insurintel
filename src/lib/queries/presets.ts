@@ -5,7 +5,7 @@ export interface ComparisonPreset {
   title: string;
   description: string;
   tickers: string[];
-  category: "By Opportunity" | "By Size";
+  category: "By Metric" | "By Size";
 }
 
 export async function computeDynamicPresets(
@@ -46,9 +46,9 @@ export async function computeDynamicPresets(
     if (pcExpense.length >= 3) {
       presets.push({
         title: "Most Inefficient P&C Carriers",
-        description: "Highest expense ratios in P&C — biggest targets for AI-driven cost reduction.",
+        description: "P&C carriers with the highest expense ratios relative to peers.",
         tickers: pcExpense.map((m) => m.ticker),
-        category: "By Opportunity",
+        category: "By Metric",
       });
     }
 
@@ -85,9 +85,9 @@ export async function computeDynamicPresets(
       if (risingMLR.length >= 3) {
         presets.push({
           title: "Health Payers with Rising MLR",
-          description: "Payers where medical loss ratio is trending up — signals cost pressure and automation need.",
+          description: "Health payers where medical loss ratio increased year-over-year.",
           tickers: risingMLR.map((m) => m.ticker),
-          category: "By Opportunity",
+          category: "By Metric",
         });
       }
     }
@@ -101,7 +101,7 @@ export async function computeDynamicPresets(
     if (premiumLeaders.length >= 3) {
       presets.push({
         title: "Largest by Premium Volume",
-        description: "The biggest premium writers across all sectors — potential enterprise customers or acquirers.",
+        description: "Companies with the largest net premiums earned across all sectors.",
         tickers: premiumLeaders.map((m) => m.ticker),
         category: "By Size",
       });
@@ -129,9 +129,9 @@ export async function computeDynamicPresets(
     if (bestWorst.size >= 3) {
       presets.push({
         title: "Best vs Worst in Class",
-        description: "Top and bottom performers by combined ratio and ROE — see the efficiency gap AI can close.",
+        description: "Top and bottom performers by combined ratio and ROE.",
         tickers: [...bestWorst].slice(0, 5),
-        category: "By Opportunity",
+        category: "By Metric",
       });
     }
   } catch {

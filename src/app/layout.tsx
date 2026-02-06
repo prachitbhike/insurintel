@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { DM_Sans, IBM_Plex_Mono, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SiteHeader } from "@/components/layout/site-header";
 import { CommandSearch } from "@/components/layout/command-search";
@@ -7,19 +7,19 @@ import { Footer } from "@/components/layout/footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-const geistSans = Geist({
+const dmSans = DM_Sans({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-geist-mono",
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
 });
 
-const instrumentSerif = Instrument_Serif({
+const playfairDisplay = Playfair_Display({
   variable: "--font-display",
-  weight: "400",
   subsets: ["latin"],
 });
 
@@ -40,11 +40,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} font-sans antialiased`}
+        className={`${dmSans.variable} ${ibmPlexMono.variable} ${playfairDisplay.variable} font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >

@@ -84,22 +84,27 @@ export function ComparisonTable({
   let lastCategory = "";
 
   return (
-    <Card className="group">
+    <Card className="rounded-sm group">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <CardTitle>Side-by-Side Comparison</CardTitle>
-          <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
+        <div>
+          <div className="flex items-center gap-2">
+            <CardTitle>Side-by-Side Comparison</CardTitle>
+            <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Green = best among selected · Red = worst among selected
+          </p>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[180px]">Metric</TableHead>
+              <TableHead className="min-w-[180px] font-mono text-[10px] uppercase tracking-[0.15em]">Metric</TableHead>
               {companies.map((c) => (
-                <TableHead key={c.ticker} className="text-right min-w-[110px]">
+                <TableHead key={c.ticker} className="text-right min-w-[110px] font-mono text-[10px] uppercase tracking-[0.15em]">
                   <div className="font-semibold">{c.ticker}</div>
-                  <div className="text-[10px] font-normal text-muted-foreground">{c.sector}</div>
+                  <div className="text-[9px] font-normal text-muted-foreground">{c.sector}</div>
                 </TableHead>
               ))}
             </TableRow>
@@ -134,7 +139,7 @@ export function ComparisonTable({
                     <TableRow>
                       <TableCell
                         colSpan={companies.length + 1}
-                        className="bg-muted/50 py-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+                        className="bg-secondary/40 py-1.5 px-3 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
                       >
                         {categoryLabels[category]}
                       </TableCell>

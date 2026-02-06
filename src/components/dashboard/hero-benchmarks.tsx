@@ -24,14 +24,14 @@ export function HeroBenchmarks({
   return (
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       {/* Left — Automation TAM centerpiece */}
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.03] p-6 flex flex-col justify-center">
+      <div className="rounded-xl border border-teal-500/30 bg-teal-500/[0.03] p-6 flex flex-col justify-center">
         <div className="flex items-center gap-2 mb-1">
-          <p className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          <p className="text-xs font-medium uppercase tracking-wider text-teal-600 dark:text-teal-400">
             Automation TAM
           </p>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="h-3 w-3 text-amber-500/40 cursor-help shrink-0" />
+              <Info className="h-3 w-3 text-teal-500/40 cursor-help shrink-0" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs">
               <p className="text-xs">
@@ -40,7 +40,7 @@ export function HeroBenchmarks({
             </TooltipContent>
           </Tooltip>
         </div>
-        <p className="text-5xl md:text-6xl font-display tracking-tight text-amber-600 dark:text-amber-400">
+        <p className="text-5xl md:text-6xl font-display tracking-tight text-teal-600 dark:text-teal-400">
           {formatCurrency(totalAutomationTAM ?? 0)}
         </p>
         <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-md">

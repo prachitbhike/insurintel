@@ -54,8 +54,8 @@ export function BarChartComponent({
         <CartesianGrid
           horizontal={!isVertical}
           vertical={isVertical}
-          strokeDasharray="3 3"
-          className="stroke-border/40"
+          strokeDasharray="2 6"
+          className="stroke-border/15"
         />
         {isVertical ? (
           <>
@@ -63,7 +63,7 @@ export function BarChartComponent({
               type="number"
               tickLine={false}
               axisLine={false}
-              className="text-xs fill-muted-foreground"
+              className="text-[10px] fill-muted-foreground"
               tickMargin={8}
               tickFormatter={yAxisTickFormatter as (value: string | number) => string}
             />
@@ -72,7 +72,7 @@ export function BarChartComponent({
               dataKey={xKey}
               tickLine={false}
               axisLine={false}
-              className="text-xs fill-muted-foreground"
+              className="text-[10px] fill-muted-foreground"
               width={80}
             />
           </>
@@ -82,13 +82,13 @@ export function BarChartComponent({
               dataKey={xKey}
               tickLine={false}
               axisLine={false}
-              className="text-xs fill-muted-foreground"
+              className="text-[10px] fill-muted-foreground"
               tickMargin={10}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              className="text-xs fill-muted-foreground"
+              className="text-[10px] fill-muted-foreground"
               width={56}
               tickFormatter={yAxisTickFormatter as (value: string | number) => string}
             />
@@ -114,7 +114,7 @@ export function BarChartComponent({
             key={key}
             dataKey={key}
             fill={`var(--color-${key})`}
-            radius={isVertical ? [0, 6, 6, 0] : [6, 6, 0, 0]}
+            radius={isVertical ? [0, 2, 2, 0] : [2, 2, 0, 0]}
             stackId={stacked ? "stack" : undefined}
           />
         ))}

@@ -121,6 +121,7 @@ const SCORING_METRICS = [
   "net_premiums_earned",
   "revenue",
   "net_income",
+  "total_assets",
 ];
 
 export async function getBulkScoringData(

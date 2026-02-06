@@ -4,6 +4,7 @@ import { getAllCompanies } from "@/lib/queries/companies";
 import { CompaniesTable } from "@/components/companies/companies-table";
 import { type CompanyListItem } from "@/types/company";
 import { type LatestMetric } from "@/types/database";
+import { getSectorBySlug } from "@/lib/data/sectors";
 
 export const metadata: Metadata = {
   title: "Companies",
@@ -13,7 +14,15 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600;
 
-export default async function CompaniesPage() {
+interface PageProps {
+  searchParams: Promise<{ sector?: string }>;
+}
+
+export default async function CompaniesPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const sectorSlug = params.sector ?? null;
+  const sectorInfo = sectorSlug ? getSectorBySlug(sectorSlug) ?? null : null;
+
   let tableData: CompanyListItem[] = [];
 
   try {
@@ -67,15 +76,24 @@ export default async function CompaniesPage() {
     // Gracefully handle missing database
   }
 
+  const pageTitle = sectorInfo ? `${sectorInfo.label} Companies` : "Companies";
+  const pageDescription = sectorInfo
+    ? `Browse ${sectorInfo.label.toLowerCase()} insurance companies with key financial metrics.`
+    : `Browse ${tableData.length || "60+"} publicly traded insurance companies. Click a row for details.`;
+
   return (
     <div className="container px-4 py-8 md:px-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Companies</h1>
-        <p className="mt-1 text-muted-foreground">
-          Browse {tableData.length || "60+"} publicly traded insurance companies. Click a row for details.
-        </p>
+        <h1 className="text-3xl font-display tracking-tight md:text-4xl">
+          <span className="font-mono text-primary/40 mr-1">&gt;</span>
+          {pageTitle}
+        </h1>
+        <p className="mt-1 font-mono text-sm text-muted-foreground">{pageDescription}</p>
       </div>
-      <CompaniesTable data={tableData} />
+      <CompaniesTable
+        data={tableData}
+        initialSectorFilter={sectorInfo ? [sectorInfo.name] : []}
+      />
     </div>
   );
 }

@@ -3,6 +3,11 @@
 import { type ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SectorBadge } from "@/components/dashboard/sector-badge";
 import { Sparkline } from "@/components/charts/sparkline";
 import { formatMetricValue } from "@/lib/metrics/formatters";
@@ -22,7 +27,7 @@ export const columns: ColumnDef<CompanyListItem>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-semibold">{row.getValue("ticker")}</span>
+      <span className="font-mono font-semibold data-glow">{row.getValue("ticker")}</span>
     ),
   },
   {
@@ -54,23 +59,37 @@ export const columns: ColumnDef<CompanyListItem>[] = [
         <ArrowUpDown className="ml-1 h-3 w-3" />
       </Button>
     ),
-    cell: ({ row }) => (
-      <span className="font-mono text-sm">
-        {formatMetricValue("combined_ratio", row.getValue("combined_ratio"))}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const value = row.getValue("combined_ratio") as number | null;
+      return (
+        <span
+          className={`font-mono text-sm ${
+            value != null && value > 100 ? "text-negative" : ""
+          }`}
+        >
+          {formatMetricValue("combined_ratio", value)}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "roe",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        className="-ml-4"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        ROE
-        <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            className="-ml-4"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            ROE
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <p className="text-xs">Return on Equity — net income / shareholders&apos; equity</p>
+        </TooltipContent>
+      </Tooltip>
     ),
     cell: ({ row }) => (
       <span className="font-mono text-sm">
@@ -86,7 +105,10 @@ export const columns: ColumnDef<CompanyListItem>[] = [
         className="-ml-4"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        Premiums
+        <span className="flex flex-col items-start leading-tight">
+          <span>Premiums</span>
+          <span className="text-[10px] font-normal text-muted-foreground">FY latest</span>
+        </span>
         <ArrowUpDown className="ml-1 h-3 w-3" />
       </Button>
     ),
@@ -102,14 +124,21 @@ export const columns: ColumnDef<CompanyListItem>[] = [
   {
     accessorKey: "eps",
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        className="-ml-4"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        EPS
-        <ArrowUpDown className="ml-1 h-3 w-3" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            className="-ml-4"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            EPS
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <p className="text-xs">Earnings Per Share — net income / shares outstanding</p>
+        </TooltipContent>
+      </Tooltip>
     ),
     cell: ({ row }) => (
       <span className="font-mono text-sm">
@@ -119,7 +148,7 @@ export const columns: ColumnDef<CompanyListItem>[] = [
   },
   {
     id: "sparkline",
-    header: "3Y Trend",
+    header: "3Y Net Income",
     cell: ({ row }) => {
       const data = row.original.sparkline_data;
       if (!data || data.length === 0) return <span className="text-muted-foreground text-xs">N/A</span>;

@@ -29,11 +29,9 @@ export function computeCompanyTam(
   company: CompanyData,
   useCase: UseCase,
   sectorStats: SectorStats,
-  captureOverride?: number
 ): CompanyTamResult | null {
   if (!useCase.applicableSectors.includes(company.sector as never)) return null;
 
-  const capture = captureOverride ?? useCase.tamCaptureRate;
   const premiums = company.metrics["net_premiums_earned"] ?? 0;
   const revenue = company.metrics["revenue"] ?? 0;
   const base = premiums || revenue;
@@ -50,7 +48,7 @@ export function computeCompanyTam(
       const sectorMin = sectorStats["expense_ratio"]?.min;
       if (er == null || sectorMin == null) return null;
       const excess = Math.max(0, er - sectorMin);
-      addressable = (excess / 100) * base * capture;
+      addressable = (excess / 100) * base;
       currentMetricValue = er;
       targetMetricValue = sectorMin;
       metricName = "expense_ratio";
@@ -61,7 +59,7 @@ export function computeCompanyTam(
       const sectorMin = sectorStats["loss_ratio"]?.min;
       if (lr == null || sectorMin == null) return null;
       const excess = Math.max(0, lr - sectorMin);
-      addressable = (excess / 100) * base * capture;
+      addressable = (excess / 100) * base;
       currentMetricValue = lr;
       targetMetricValue = sectorMin;
       metricName = "loss_ratio";
@@ -71,17 +69,10 @@ export function computeCompanyTam(
       const mlr = company.metrics["medical_loss_ratio"];
       if (mlr == null) return null;
       const adminMargin = Math.max(0, 1 - mlr / 100);
-      addressable = adminMargin * base * capture;
+      addressable = adminMargin * base;
       currentMetricValue = mlr;
       targetMetricValue = null;
       metricName = "medical_loss_ratio";
-      break;
-    }
-    case "revenue_pct": {
-      addressable = base * capture;
-      currentMetricValue = null;
-      targetMetricValue = null;
-      metricName = "revenue";
       break;
     }
   }
@@ -122,12 +113,11 @@ export function computeBatchTam(
   companies: CompanyData[],
   useCase: UseCase,
   sectorStatsMap: Record<string, SectorStats>,
-  captureOverride?: number
 ): CompanyTamResult[] {
   const results: CompanyTamResult[] = [];
   for (const company of companies) {
     const stats = sectorStatsMap[company.sector] ?? {};
-    const result = computeCompanyTam(company, useCase, stats, captureOverride);
+    const result = computeCompanyTam(company, useCase, stats);
     if (result) results.push(result);
   }
   return results.sort((a, b) => b.addressableSpend - a.addressableSpend);

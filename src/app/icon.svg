@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <!-- Shield shape -->
+  <path d="M16 2 L28 7 V15C28 22.18 22.84 28.54 16 30 9.16 28.54 4 22.18 4 15V7L16 2Z" fill="url(#g)"/>
+  <!-- Chart bars inside shield -->
+  <rect x="9" y="18" width="3" height="6" rx="0.75" fill="white" opacity="0.95"/>
+  <rect x="14.5" y="14" width="3" height="10" rx="0.75" fill="white" opacity="0.95"/>
+  <rect x="20" y="10" width="3" height="14" rx="0.75" fill="white" opacity="0.95"/>
+</svg>

@@ -15,7 +15,7 @@ export function GlossarySection({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold tracking-tight">{label}</h2>
+      <h2 className="text-lg font-display tracking-tight">{label}</h2>
       <p className="text-sm text-muted-foreground mb-4">{description}</p>
       <div className="divide-y">
         {entries.map((entry) => (

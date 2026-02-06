@@ -1,6 +1,5 @@
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSectorAverages } from "@/lib/queries/sectors";
 import { getCompaniesBySector } from "@/lib/queries/companies";
@@ -91,6 +90,7 @@ export default async function SectorDetailPage({ params }: PageProps) {
         .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
         .in("company_id", companyIds)
         .in("metric_name", sector.key_metrics)
+        .eq("period_type", "quarterly")
         .order("fiscal_year", { ascending: true })
         .order("fiscal_quarter", { ascending: true }),
     ]);
@@ -259,7 +259,7 @@ export default async function SectorDetailPage({ params }: PageProps) {
                       </Tooltip>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold tracking-tight font-mono">
+                      <div className="text-3xl font-display tracking-tight">
                         {formatMetricValue(stat.metricName, stat.value)}
                       </div>
                     </CardContent>
@@ -274,26 +274,6 @@ export default async function SectorDetailPage({ params }: PageProps) {
       {/* Main Content */}
       <div className="container px-4 md:px-6">
         <div className="space-y-6 py-8">
-          {/* AI Opportunity Narrative */}
-          {sector.ai_opportunities.length > 0 && (
-            <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Zap className="h-4 w-4 text-primary/60" />
-                <h3 className="text-sm font-semibold">
-                  Where AI Wins in {sector.label}
-                </h3>
-              </div>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {sector.ai_opportunities.map((opp, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-muted-foreground leading-relaxed">
-                    <span className="text-primary/40 shrink-0">-</span>
-                    {opp}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {/* Trend Charts */}
           <SectorTrendCharts
             trendData={trendData}
@@ -304,7 +284,7 @@ export default async function SectorDetailPage({ params }: PageProps) {
 
           {/* Companies Table */}
           <div>
-            <h2 className="text-xl font-semibold mb-4">
+            <h2 className="text-xl font-display tracking-tight mb-4">
               Companies in {sector.label}
             </h2>
             <CompaniesTable

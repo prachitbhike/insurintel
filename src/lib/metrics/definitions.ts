@@ -33,7 +33,6 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     applicable_sectors: ["P&C", "Reinsurance"],
     higher_is_better: false,
     format_decimals: 1,
-    founder_insight: "AI claims triage and fraud detection directly attack loss ratio. Every point of reduction on a large book is worth hundreds of millions.",
   },
   expense_ratio: {
     name: "expense_ratio",
@@ -45,7 +44,6 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     applicable_sectors: ["P&C", "Reinsurance"],
     higher_is_better: false,
     format_decimals: 1,
-    founder_insight: "The gap between worst and best-in-class expense ratios represents tens of billions in addressable AI automation spend.",
   },
   combined_ratio: {
     name: "combined_ratio",
@@ -57,7 +55,6 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     applicable_sectors: ["P&C", "Reinsurance"],
     higher_is_better: false,
     format_decimals: 1,
-    founder_insight: "Companies above 100% are losing money on core operations — your strongest prospects for AI-driven cost reduction.",
   },
   net_income: {
     name: "net_income",
@@ -79,7 +76,6 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     applicable_sectors: ["P&C", "Life", "Health", "Reinsurance", "Brokers"],
     higher_is_better: true,
     format_decimals: 1,
-    founder_insight: "Low and declining ROE creates board-level pressure to adopt technology solutions. Target companies below sector average.",
   },
   roa: {
     name: "roa",
@@ -206,7 +202,6 @@ export const METRIC_DEFINITIONS: Record<string, MetricDefinition> = {
     applicable_sectors: ["Health"],
     higher_is_better: false,
     format_decimals: 1,
-    founder_insight: "ACA floors mean payers can only improve margins on the admin side (15-20% of premiums). This is where AI delivers most value.",
   },
   acquisition_costs: {
     name: "acquisition_costs",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SectorBadge } from "./sector-badge";
+import { ScoreBadge } from "@/components/scoring/score-badge";
 import { Sparkline } from "@/components/charts/sparkline";
 import { formatMetricValue, formatCurrency } from "@/lib/metrics/formatters";
 import { MetricLabel } from "@/components/ui/metric-label";
@@ -18,6 +18,7 @@ import { ExportButtonGroup } from "@/components/ui/export-button-group";
 import { generateCSV, downloadCSV } from "@/lib/export/csv";
 import { copyTableToClipboard } from "@/lib/export/clipboard";
 import { type Sector } from "@/types/database";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export interface DisruptionTarget {
@@ -30,146 +31,194 @@ export interface DisruptionTarget {
   roe: number | null;
   automationSavings: number | null;
   trend: number[];
+  prospectScore?: number | null;
+  signalTag?: string | null;
+  mlr: number | null;
+  debtToEquity: number | null;
+  revenue: number | null;
+  netIncome: number | null;
+  totalAssets: number | null;
 }
 
 interface DisruptionTargetsTableProps {
   targets: DisruptionTarget[];
+  sector: Sector;
 }
 
-const ALL_SECTORS: Sector[] = ["P&C", "Life", "Health", "Reinsurance", "Brokers"];
+interface SectorColumnDef {
+  label: string;
+  metricName: string;
+  description?: string;
+  getValue: (t: DisruptionTarget) => number | null;
+  accent?: "destructive" | "teal";
+  formatAsCurrency?: boolean;
+}
+
+const SECTOR_TABLE: Record<Sector, {
+  description: string;
+  sortNote: string;
+  cols: [SectorColumnDef, SectorColumnDef, SectorColumnDef, SectorColumnDef];
+}> = {
+  "P&C": {
+    description: "Ranked by combined ratio (worst first). Companies in underwriting loss (>100%) are the strongest prospects for AI-driven cost reduction.",
+    sortNote: "Worst combined ratio first",
+    cols: [
+      { label: "Combined", metricName: "combined_ratio", getValue: (t) => t.combinedRatio, accent: "destructive" },
+      { label: "Expense", metricName: "expense_ratio", getValue: (t) => t.expenseRatio },
+      { label: "ROE", metricName: "roe", getValue: (t) => t.roe },
+      { label: "Expense Gap $", metricName: "expense_ratio", description: "Dollar value of the expense ratio gap vs best-in-class.", getValue: (t) => t.automationSavings, accent: "teal", formatAsCurrency: true },
+    ],
+  },
+  Reinsurance: {
+    description: "Ranked by combined ratio (worst first). Underwriting discipline across the catastrophe cycle.",
+    sortNote: "Worst combined ratio first",
+    cols: [
+      { label: "Combined", metricName: "combined_ratio", getValue: (t) => t.combinedRatio, accent: "destructive" },
+      { label: "Expense", metricName: "expense_ratio", getValue: (t) => t.expenseRatio },
+      { label: "ROE", metricName: "roe", getValue: (t) => t.roe },
+      { label: "Expense Gap $", metricName: "expense_ratio", description: "Dollar value of the expense ratio gap vs best-in-class.", getValue: (t) => t.automationSavings, accent: "teal", formatAsCurrency: true },
+    ],
+  },
+  Health: {
+    description: "Ranked by medical loss ratio (highest first). ACA mandates 80\u201385% MLR \u2014 companies near the ceiling have the tightest admin margins.",
+    sortNote: "Highest MLR first",
+    cols: [
+      { label: "MLR", metricName: "medical_loss_ratio", getValue: (t) => t.mlr, accent: "destructive" },
+      { label: "Admin Margin", metricName: "medical_loss_ratio", description: "100% minus MLR \u2014 the margin available for admin, profit, and technology.", getValue: (t) => t.mlr != null ? +(100 - t.mlr).toFixed(1) : null },
+      { label: "ROE", metricName: "roe", getValue: (t) => t.roe },
+      { label: "Revenue", metricName: "revenue", getValue: (t) => t.revenue },
+    ],
+  },
+  Life: {
+    description: "Ranked by ROE (lowest first). Capital-heavy balance sheets make operational efficiency critical for life insurers.",
+    sortNote: "Lowest ROE first",
+    cols: [
+      { label: "ROE", metricName: "roe", getValue: (t) => t.roe },
+      { label: "Net Income", metricName: "net_income", getValue: (t) => t.netIncome },
+      { label: "Total Assets", metricName: "total_assets", getValue: (t) => t.totalAssets },
+      { label: "D/E", metricName: "debt_to_equity", getValue: (t) => t.debtToEquity },
+    ],
+  },
+  Brokers: {
+    description: "Ranked by leverage (highest D/E first). M&A-fueled debt loads create pressure to grow efficiently into obligations.",
+    sortNote: "Highest D/E first",
+    cols: [
+      { label: "D/E", metricName: "debt_to_equity", getValue: (t) => t.debtToEquity, accent: "destructive" },
+      { label: "Revenue", metricName: "revenue", getValue: (t) => t.revenue },
+      { label: "ROE", metricName: "roe", getValue: (t) => t.roe },
+      { label: "Net Income", metricName: "net_income", getValue: (t) => t.netIncome },
+    ],
+  },
+};
 
 export function DisruptionTargetsTable({
   targets,
+  sector,
 }: DisruptionTargetsTableProps) {
-  const [sectorFilter, setSectorFilter] = useState<Sector | null>(null);
+  const config = SECTOR_TABLE[sector];
+  const filtered = targets;
 
-  const filtered = useMemo(() => {
-    if (!sectorFilter) return targets;
-    return targets.filter((t) => t.sector === sectorFilter);
-  }, [targets, sectorFilter]);
+  const formatColValue = useCallback(
+    (col: SectorColumnDef, t: DisruptionTarget): string => {
+      const v = col.getValue(t);
+      if (v == null) return "N/A";
+      if (col.formatAsCurrency) return formatCurrency(v);
+      return formatMetricValue(col.metricName, v);
+    },
+    []
+  );
 
   const handleCopy = useCallback(async () => {
-    const headers = ["#", "Ticker", "Name", "Sector", "Combined Ratio", "Expense Ratio", "ROE", "Automation $"];
+    const headers = ["#", "Ticker", "Name", "Score", ...config.cols.map((c) => c.label), "Signal"];
     const rows = filtered.map((t, i) => [
       String(i + 1),
       t.ticker,
       t.name,
-      t.sector,
-      formatMetricValue("combined_ratio", t.combinedRatio),
-      formatMetricValue("expense_ratio", t.expenseRatio),
-      formatMetricValue("roe", t.roe),
-      t.automationSavings != null ? formatCurrency(t.automationSavings) : "—",
+      t.prospectScore != null ? String(t.prospectScore) : "—",
+      ...config.cols.map((c) => formatColValue(c, t)),
+      t.signalTag ?? "—",
     ]);
     return copyTableToClipboard(headers, rows);
-  }, [filtered]);
+  }, [filtered, config, formatColValue]);
 
   const handleCSV = useCallback(() => {
-    const headers = ["Rank", "Ticker", "Name", "Sector", "Combined Ratio", "Expense Ratio", "ROE", "Automation Savings"];
+    const headers = ["Rank", "Ticker", "Name", "Score", ...config.cols.map((c) => c.label), "Signal"];
     const rows = filtered.map((t, i) => [
       String(i + 1),
       t.ticker,
       t.name,
-      t.sector,
-      formatMetricValue("combined_ratio", t.combinedRatio),
-      formatMetricValue("expense_ratio", t.expenseRatio),
-      formatMetricValue("roe", t.roe),
-      t.automationSavings != null ? formatCurrency(t.automationSavings) : "—",
+      t.prospectScore != null ? String(t.prospectScore) : "—",
+      ...config.cols.map((c) => formatColValue(c, t)),
+      t.signalTag ?? "—",
     ]);
     const csv = generateCSV(headers, rows);
     downloadCSV(csv, "disruption-targets.csv");
-  }, [filtered]);
+  }, [filtered, config, formatColValue]);
 
-  const maxCombined = Math.max(
-    ...filtered.map((t) => t.combinedRatio ?? 0),
-    1
-  );
-  const maxAutomation = Math.max(
-    ...filtered.map((t) => t.automationSavings ?? 0),
-    1
+  const colMaxes = useMemo(() =>
+    config.cols.map((col) =>
+      Math.max(...filtered.map((t) => Math.abs(col.getValue(t) ?? 0)), 1)
+    ),
+    [filtered, config]
   );
 
   return (
-    <Card className="shadow-sm group">
+    <Card className="rounded-sm shadow-sm group">
       <CardHeader className="pb-1">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-baseline gap-3">
-            <CardTitle className="text-2xl font-display tracking-tight">
-              Disruption Targets
-            </CardTitle>
-            <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
-            <span className="text-xs text-muted-foreground">
-              Worst combined ratio first
-            </span>
-          </div>
-          <div className="inline-flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-            <button
-              onClick={() => setSectorFilter(null)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
-                !sectorFilter
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              All
-            </button>
-            {ALL_SECTORS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setSectorFilter(s)}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
-                  sectorFilter === s
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <CardTitle className="text-2xl font-display tracking-tight">
+            <span className="font-mono text-primary/40 mr-1">&gt;</span>
+            Company Rankings
+          </CardTitle>
+          <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
+          <span className="text-xs text-muted-foreground">
+            {config.sortNote}
+          </span>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-snug">
-          Incumbents with the highest combined ratios present the biggest
-          opportunities for automation-driven disruption.
+        <p className="text-xs text-muted-foreground leading-snug">
+          {config.description}
         </p>
       </CardHeader>
       <CardContent className="pt-2">
         <div className="max-h-[32rem] overflow-y-auto">
           <Table>
-            <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableHeader className="sticky top-0 z-10 bg-secondary/80">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-8 text-[10px] font-medium uppercase tracking-wider">#</TableHead>
-                <TableHead className="text-[10px] font-medium uppercase tracking-wider">Company</TableHead>
-                <TableHead className="text-[10px] font-medium uppercase tracking-wider">Sector</TableHead>
-                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
-                  <MetricLabel metricName="combined_ratio" label="Combined" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
-                </TableHead>
-                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
-                  <MetricLabel metricName="expense_ratio" label="Expense" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
-                </TableHead>
-                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
-                  <MetricLabel metricName="roe" label="ROE" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
-                </TableHead>
-                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  <MetricLabel metricName="expense_ratio" label="Automation $" description="Estimated savings if this company matched the best-in-class expense ratio. Formula: (company expense ratio - best) / 100 x net premiums." className="text-[10px] font-medium uppercase tracking-wider justify-end text-amber-600 dark:text-amber-400" iconClassName="h-2.5 w-2.5" />
-                </TableHead>
-                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider w-20">Trend</TableHead>
+                <TableHead className="w-8 font-mono text-[10px] uppercase tracking-[0.15em]">#</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-[0.15em]">Company</TableHead>
+                <TableHead className="font-mono text-[10px] uppercase tracking-[0.15em] w-14">Score</TableHead>
+                {config.cols.map((col, ci) => (
+                  <TableHead
+                    key={ci}
+                    className={cn(
+                      "text-right font-mono text-[10px] uppercase tracking-[0.15em]",
+                      col.accent === "teal" && "text-teal-600 dark:text-teal-400"
+                    )}
+                  >
+                    <MetricLabel
+                      metricName={col.metricName}
+                      label={col.label}
+                      description={col.description}
+                      className={cn(
+                        "font-mono text-[10px] uppercase tracking-[0.15em] justify-end",
+                        col.accent === "teal" && "text-teal-600 dark:text-teal-400"
+                      )}
+                      iconClassName="h-2.5 w-2.5"
+                    />
+                  </TableHead>
+                ))}
+                <TableHead className="font-mono text-[10px] uppercase tracking-[0.15em] hidden lg:table-cell">Buyer Signal</TableHead>
+                <TableHead className="text-right font-mono text-[10px] uppercase tracking-[0.15em] w-20">Trend</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((t, i) => {
                 const heatOpacity = Math.max(0, 0.06 - i * 0.006);
-                const combinedBarWidth =
-                  t.combinedRatio != null
-                    ? (t.combinedRatio / maxCombined) * 100
-                    : 0;
-                const automationBarWidth =
-                  t.automationSavings != null
-                    ? (t.automationSavings / maxAutomation) * 100
-                    : 0;
 
                 return (
                   <TableRow
                     key={t.companyId}
+                    className="even:bg-secondary/20"
                     style={
                       heatOpacity > 0
                         ? { backgroundColor: `oklch(0.577 0.245 27.325 / ${heatOpacity})` }
@@ -182,46 +231,61 @@ export function DisruptionTargetsTable({
                     <TableCell>
                       <Link
                         href={`/companies/${t.ticker.toLowerCase()}`}
-                        className="font-semibold text-[13px] hover:underline underline-offset-2"
+                        className="font-mono font-semibold text-sm hover:underline underline-offset-2 data-glow"
                       >
                         {t.ticker}
                       </Link>
-                      <span className="ml-1.5 text-[11px] text-muted-foreground hidden md:inline">
+                      <span className="ml-1.5 text-xs text-muted-foreground hidden md:inline">
                         {t.name}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <SectorBadge sector={t.sector} className="text-[10px]" />
+                      <ScoreBadge score={t.prospectScore ?? null} size="sm" />
                     </TableCell>
-                    <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium">
-                      <span className="relative inline-flex items-center justify-end w-full">
-                        <span
-                          className="absolute right-0 top-0 bottom-0 rounded-sm bg-destructive/10"
-                          style={{ width: `${combinedBarWidth}%` }}
-                        />
-                        <span className="relative">
-                          {formatMetricValue("combined_ratio", t.combinedRatio)}
+                    {config.cols.map((col, ci) => {
+                      const val = col.getValue(t);
+                      const barWidth = val != null && col.accent
+                        ? (Math.abs(val) / colMaxes[ci]) * 100
+                        : 0;
+                      const barBg = col.accent === "teal"
+                        ? "bg-teal-500/10"
+                        : col.accent === "destructive"
+                        ? "bg-destructive/10"
+                        : undefined;
+
+                      return (
+                        <TableCell
+                          key={ci}
+                          className={cn(
+                            "text-right text-sm tabular-nums font-mono",
+                            col.accent === "teal" && "font-medium text-teal-600 dark:text-teal-400",
+                            ci === 0 && "font-medium"
+                          )}
+                        >
+                          <span className="relative inline-flex items-center justify-end w-full gap-1.5">
+                            {barBg && barWidth > 0 && (
+                              <span
+                                className={cn("absolute right-0 top-0 bottom-0 rounded-sm", barBg)}
+                                style={{ width: `${barWidth}%` }}
+                              />
+                            )}
+                            <span className="relative">
+                              {col.formatAsCurrency
+                                ? (val != null ? formatCurrency(val) : "—")
+                                : formatMetricValue(col.metricName, val)}
+                            </span>
+                          </span>
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="hidden lg:table-cell">
+                      {t.signalTag ? (
+                        <span className="text-[11px] leading-tight text-muted-foreground line-clamp-1">
+                          {t.signalTag}
                         </span>
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right text-[13px] tabular-nums font-mono">
-                      {formatMetricValue("expense_ratio", t.expenseRatio)}
-                    </TableCell>
-                    <TableCell className="text-right text-[13px] tabular-nums font-mono">
-                      {formatMetricValue("roe", t.roe)}
-                    </TableCell>
-                    <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium text-amber-600 dark:text-amber-400">
-                      <span className="relative inline-flex items-center justify-end w-full">
-                        <span
-                          className="absolute right-0 top-0 bottom-0 rounded-sm bg-amber-500/10"
-                          style={{ width: `${automationBarWidth}%` }}
-                        />
-                        <span className="relative">
-                          {t.automationSavings != null
-                            ? formatCurrency(t.automationSavings)
-                            : "—"}
-                        </span>
-                      </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">&mdash;</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end">
@@ -233,7 +297,7 @@ export function DisruptionTargetsTable({
                             width={56}
                           />
                         ) : (
-                          <span className="text-[11px] text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </div>
                     </TableCell>
@@ -242,8 +306,8 @@ export function DisruptionTargetsTable({
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    No companies match this sector.
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    No companies in this sector.
                   </TableCell>
                 </TableRow>
               )}

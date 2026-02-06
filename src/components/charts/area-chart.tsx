@@ -64,7 +64,7 @@ export function AreaChartComponent({
               <stop
                 offset="0%"
                 stopColor={`var(--color-${key})`}
-                stopOpacity={0.3}
+                stopOpacity={0.4}
               />
               <stop
                 offset="95%"
@@ -77,21 +77,21 @@ export function AreaChartComponent({
         {showGrid && (
           <CartesianGrid
             vertical={false}
-            strokeDasharray="3 3"
-            className="stroke-border/40"
+            strokeDasharray="2 6"
+            className="stroke-border/15"
           />
         )}
         <XAxis
           dataKey={xKey}
           tickLine={false}
           axisLine={false}
-          className="text-xs fill-muted-foreground"
+          className="text-[10px] fill-muted-foreground"
           tickMargin={10}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
-          className="text-xs fill-muted-foreground"
+          className="text-[10px] fill-muted-foreground"
           width={56}
           tickFormatter={yAxisTickFormatter as (value: string | number) => string}
         />
@@ -117,7 +117,7 @@ export function AreaChartComponent({
             dataKey={key}
             fill={`url(#area-fill-${key}-${chartId})`}
             stroke={`var(--color-${key})`}
-            strokeWidth={2}
+            strokeWidth={2.5}
             stackId={stacked ? "stack" : undefined}
             connectNulls
           />

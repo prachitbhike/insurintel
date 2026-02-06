@@ -1,227 +1,429 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSectorOverviews } from "@/lib/queries/sectors";
-import { getIndustryTimeseries } from "@/lib/queries/metrics";
-import { HeroBenchmarks } from "@/components/dashboard/hero-benchmarks";
-import { SectorOpportunityCard } from "@/components/dashboard/sector-opportunity-card";
+import { getBulkScoringData, getIndustryTimeseries } from "@/lib/queries/metrics";
+import { computeProspectScoresBatch } from "@/lib/scoring";
+import { computeBuyerSignals } from "@/lib/analysis/buyer-signals";
+import { generateFounderNarrative } from "@/lib/scoring/founder-narrative";
+import { interpretMetric, type InterpretContext } from "@/lib/metrics/interpret";
+import { type HeroMetric } from "@/components/dashboard/hero-benchmarks-v2";
+import { type TopProspect } from "@/components/dashboard/top-prospects-section";
 import {
-  DisruptionTargetsTable,
   type DisruptionTarget,
 } from "@/components/dashboard/disruption-targets-table";
-import { type LatestMetric } from "@/types/database";
-import {
-  aggregateSectorByPeriod,
-  extractCompanyTimeseries,
-} from "@/lib/metrics/aggregations";
-import { SECTORS } from "@/lib/data/sectors";
+import { extractCompanyTimeseries } from "@/lib/metrics/aggregations";
+import { getSectorBySlug, type SectorInfo } from "@/lib/data/sectors";
+import { SectorDashboard } from "@/components/dashboard/sector-dashboard";
+import { getSectorStoryMetric } from "@/lib/data/sector-story-config";
+import { type HeroChartData } from "@/components/dashboard/sector-hero-chart";
+import { type Sector } from "@/types/database";
 
 export const revalidate = 3600;
 
-const KEY_METRICS = [
+const SPARKLINE_EXTRA_METRICS = [
   "combined_ratio",
   "expense_ratio",
   "premium_growth_yoy",
   "roe",
   "medical_loss_ratio",
+  "net_premiums_earned",
 ];
 
 async function getOverviewData() {
   try {
     const supabase = await createClient();
 
-    const [sectorOverviews, latestMetricsRes, industryTimeseries] =
+    const [bulkScoringData, industryTimeseries] =
       await Promise.all([
-        getSectorOverviews(supabase),
-        supabase.from("mv_latest_metrics").select("*"),
-        getIndustryTimeseries(supabase, [
-          ...KEY_METRICS,
-          "net_premiums_earned",
-        ]),
+        getBulkScoringData(supabase),
+        getIndustryTimeseries(supabase, SPARKLINE_EXTRA_METRICS),
       ]);
 
-    const latestMetrics = (latestMetricsRes.data ?? []) as LatestMetric[];
+    // Compute prospect scores
+    const scores = computeProspectScoresBatch(bulkScoringData);
+    const scoreMap = new Map(scores.map((s) => [s.companyId, s]));
 
-    const premiums = latestMetrics.filter(
-      (m) => m.metric_name === "net_premiums_earned"
-    );
-    const combinedRatios = latestMetrics.filter(
-      (m) => m.metric_name === "combined_ratio"
-    );
-    const expenseRatios = latestMetrics.filter(
-      (m) => m.metric_name === "expense_ratio"
-    );
-    const roes = latestMetrics.filter((m) => m.metric_name === "roe");
+    // Compute buyer signals
+    const buyerSignals = computeBuyerSignals(bulkScoringData, scores);
+    const signalMap = new Map(buyerSignals.map((s) => [s.companyId, s]));
 
-    const avg = (arr: LatestMetric[]) =>
-      arr.length > 0
-        ? arr.reduce((s, m) => s + m.metric_value, 0) / arr.length
-        : null;
-    const sum = (arr: LatestMetric[]) =>
-      arr.length > 0 ? arr.reduce((s, m) => s + m.metric_value, 0) : null;
+    const allCompanies = bulkScoringData.companies;
+    const latestMetrics = bulkScoringData.latestMetrics;
 
-    const totalCompanies = new Set(latestMetrics.map((m) => m.company_id)).size;
+    // Build disruption targets from ALL companies with sector-appropriate metrics
+    const trendMetricForSector = (sector: string) => {
+      if (sector === "P&C" || sector === "Reinsurance") return "combined_ratio";
+      if (sector === "Health") return "medical_loss_ratio";
+      return "roe";
+    };
 
-    // Build sparkline trends for each unique primary opportunity metric across sectors
-    const sparklineMetrics = new Set(SECTORS.map((s) => s.opportunity_metrics[0].metric));
-    const sectorSparklineTrends: Record<string, Record<string, number[]>> = {};
-    for (const metric of sparklineMetrics) {
-      const byMetric = aggregateSectorByPeriod(industryTimeseries, metric);
-      for (const [sectorName, values] of Object.entries(byMetric)) {
-        if (!sectorSparklineTrends[sectorName]) sectorSparklineTrends[sectorName] = {};
-        sectorSparklineTrends[sectorName][metric] = values;
-      }
-    }
+    const bestExpenseRatio = allCompanies.reduce((best, c) => {
+      const er = latestMetrics[c.id]?.expense_ratio;
+      return er != null && (best == null || er < best) ? er : best;
+    }, null as number | null);
 
-    const bestExpenseRatioValue = expenseRatios.length > 0
-      ? Math.min(...expenseRatios.map((e) => e.metric_value))
-      : 0;
-
-    const disruptionTargets: DisruptionTarget[] = [...combinedRatios]
-      .sort((a, b) => b.metric_value - a.metric_value)
-      .map((m) => {
-        const expense = expenseRatios.find(
-          (e) => e.company_id === m.company_id
-        );
-        const premium = premiums.find(
-          (p) => p.company_id === m.company_id
-        );
-        const roe = roes.find((r) => r.company_id === m.company_id);
+    const disruptionTargets: DisruptionTarget[] = allCompanies
+      .map((c) => {
+        const metrics = latestMetrics[c.id] ?? {};
+        const expenseVal = metrics.expense_ratio ?? null;
+        const premiumVal = metrics.net_premiums_earned ?? null;
+        const roeVal = metrics.roe ?? null;
         const trend = extractCompanyTimeseries(
           industryTimeseries,
-          "combined_ratio",
-          m.company_id
+          trendMetricForSector(c.sector),
+          c.id
         );
-        const expenseVal = expense?.metric_value ?? null;
-        const premiumVal = premium?.metric_value ?? null;
         const automationSavings =
-          expenseVal != null && premiumVal != null && expenseVal > bestExpenseRatioValue
-            ? ((expenseVal - bestExpenseRatioValue) / 100) * premiumVal
+          expenseVal != null && premiumVal != null && bestExpenseRatio != null && expenseVal > bestExpenseRatio
+            ? ((expenseVal - bestExpenseRatio) / 100) * premiumVal
             : null;
+
+        const score = scoreMap.get(c.id);
+        const signal = signalMap.get(c.id);
+
         return {
-          companyId: m.company_id,
-          ticker: m.ticker,
-          name: m.name,
-          sector: m.sector,
-          combinedRatio: m.metric_value,
+          companyId: c.id,
+          ticker: c.ticker,
+          name: c.name,
+          sector: c.sector,
+          combinedRatio: metrics.combined_ratio ?? null,
           expenseRatio: expenseVal,
-          roe: roe?.metric_value ?? null,
+          roe: roeVal,
           automationSavings,
           trend,
+          prospectScore: score?.totalScore ?? null,
+          signalTag: signal?.signalDescription ?? null,
+          mlr: metrics.medical_loss_ratio ?? null,
+          debtToEquity: metrics.debt_to_equity ?? null,
+          revenue: metrics.revenue ?? null,
+          netIncome: metrics.net_income ?? null,
+          totalAssets: metrics.total_assets ?? null,
         };
       });
 
-    let totalAutomationTAM = 0;
-    for (const expense of expenseRatios) {
-      const premium = premiums.find(
-        (p) => p.company_id === expense.company_id
-      );
-      if (premium && expense.metric_value > bestExpenseRatioValue) {
-        totalAutomationTAM +=
-          ((expense.metric_value - bestExpenseRatioValue) / 100) *
-          premium.metric_value;
-      }
-    }
-
     return {
-      totalCompanies,
-      totalPremium: sum(premiums),
-      avgCombinedRatio: avg(combinedRatios),
-      avgExpenseRatio: avg(expenseRatios),
-      totalAutomationTAM,
-      sectorOverviews,
-      sectorSparklineTrends,
       disruptionTargets,
+      bulkScoringData,
+      scores,
+      scoreMap,
+      signalMap,
     };
   } catch {
     return {
-      totalCompanies: 0,
-      totalPremium: null,
-      avgCombinedRatio: null,
-      avgExpenseRatio: null,
-      totalAutomationTAM: 0,
-      sectorOverviews: [],
-      sectorSparklineTrends: {} as Record<string, Record<string, number[]>>,
       disruptionTargets: [],
+      bulkScoringData: null,
+      scores: [],
+      scoreMap: new Map(),
+      signalMap: new Map(),
     };
   }
 }
 
-export default async function HomePage() {
-  const overviewData = await getOverviewData();
+function buildSectorHeroMetrics(
+  sector: SectorInfo,
+  companies: { id: string; ticker: string; name: string; sector: string }[],
+  latestMetrics: Record<string, Record<string, number>>,
+  timeseries: Record<string, Record<string, { fiscal_year: number; value: number }[]>>
+): HeroMetric[] {
+  const sectorCompanies = companies.filter((c) => c.sector === sector.name);
+
+  return sector.hero_stats.map((stat) => {
+    const values: number[] = [];
+    for (const c of sectorCompanies) {
+      const v = latestMetrics[c.id]?.[stat.metricName];
+      if (v != null) values.push(v);
+    }
+
+    let current: number | null = null;
+    let annotation: string | undefined;
+
+    if (stat.aggregation === "sum") {
+      current = values.length > 0 ? values.reduce((s, v) => s + v, 0) : null;
+    } else if (stat.aggregation === "avg") {
+      current = values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : null;
+    } else if (stat.aggregation === "spread") {
+      if (values.length >= 2) {
+        const spread = Math.max(...values) - Math.min(...values);
+        current = spread;
+        annotation = `${spread.toFixed(1)}pp best-to-worst`;
+      }
+    }
+
+    // Compute prior year value
+    let prior: number | null = null;
+    if (stat.aggregation === "sum") {
+      const yearValues = new Map<number, number>();
+      for (const c of sectorCompanies) {
+        const ts = timeseries[c.id]?.[stat.metricName];
+        if (!ts) continue;
+        for (const entry of ts) {
+          yearValues.set(entry.fiscal_year, (yearValues.get(entry.fiscal_year) ?? 0) + entry.value);
+        }
+      }
+      const sorted = Array.from(yearValues.entries()).sort((a, b) => b[0] - a[0]);
+      prior = sorted.length >= 2 ? sorted[1][1] : null;
+    } else if (stat.aggregation === "avg") {
+      const priorValues: number[] = [];
+      for (const c of sectorCompanies) {
+        const ts = timeseries[c.id]?.[stat.metricName];
+        if (!ts || ts.length < 2) continue;
+        const sorted = [...ts].sort((a, b) => b.fiscal_year - a.fiscal_year);
+        if (sorted.length >= 2) priorValues.push(sorted[1].value);
+      }
+      prior = priorValues.length > 0
+        ? priorValues.reduce((s, v) => s + v, 0) / priorValues.length
+        : null;
+    }
+
+    return {
+      label: stat.title,
+      metricName: stat.metricName,
+      current,
+      prior,
+      deltaAbs: null,
+      sparkline: [],
+      tooltip: stat.tooltip,
+      annotation,
+    };
+  });
+}
+
+function buildHeroChartData(
+  sector: SectorInfo,
+  sectorCompanies: { id: string; ticker: string; name: string; sector: Sector }[],
+  latestMetrics: Record<string, Record<string, number>>,
+  scoreMap: Map<string, { totalScore: number | null }>,
+): HeroChartData {
+  const sectorName = sector.name;
+
+  if (sectorName === "P&C" || sectorName === "Reinsurance") {
+    // Combined ratio breakeven data (also used for Re radar fallback bars)
+    const items = sectorCompanies
+      .map((c) => ({
+        ticker: c.ticker,
+        name: c.name,
+        combinedRatio: latestMetrics[c.id]?.combined_ratio ?? null,
+        score: scoreMap.get(c.id)?.totalScore ?? null,
+      }))
+      .filter((d): d is typeof d & { combinedRatio: number } => d.combinedRatio != null)
+      .sort((a, b) => b.combinedRatio - a.combinedRatio);
+
+    const avg =
+      items.length > 0
+        ? items.reduce((s, d) => s + d.combinedRatio, 0) / items.length
+        : null;
+
+    if (sectorName === "Reinsurance") {
+      // Build radar data for reinsurance
+      const radarItems = sectorCompanies
+        .map((c) => {
+          const m = latestMetrics[c.id] ?? {};
+          return {
+            ticker: c.ticker,
+            name: c.name,
+            combinedRatio: m.combined_ratio ?? null,
+            lossRatio: m.loss_ratio ?? null,
+            expenseRatio: m.expense_ratio ?? null,
+            roe: m.roe ?? null,
+            premiumGrowth: m.premium_growth_yoy ?? null,
+          };
+        })
+        .filter((d) => d.combinedRatio != null || d.roe != null);
+
+      return {
+        type: "reinsurance-radar",
+        data: radarItems,
+      };
+    }
+
+    return {
+      type: "pc-breakeven",
+      data: items,
+      sectorAvg: avg,
+    };
+  }
+
+  if (sectorName === "Health") {
+    const items = sectorCompanies
+      .map((c) => ({
+        ticker: c.ticker,
+        name: c.name,
+        mlr: latestMetrics[c.id]?.medical_loss_ratio ?? null,
+        adminMargin: latestMetrics[c.id]?.medical_loss_ratio != null
+          ? 100 - latestMetrics[c.id].medical_loss_ratio
+          : null,
+        revenue: latestMetrics[c.id]?.revenue ?? null,
+      }))
+      .filter((d): d is typeof d & { mlr: number; adminMargin: number } => d.mlr != null)
+      .sort((a, b) => a.adminMargin - b.adminMargin); // Thinnest margin first
+    return { type: "health-margin", data: items };
+  }
+
+  if (sectorName === "Life") {
+    const items = sectorCompanies
+      .map((c) => {
+        const m = latestMetrics[c.id] ?? {};
+        return {
+          ticker: c.ticker,
+          name: c.name,
+          totalAssets: m.total_assets ?? null,
+          roe: m.roe ?? null,
+          netIncome: m.net_income ?? null,
+          score: scoreMap.get(c.id)?.totalScore ?? null,
+        };
+      })
+      .filter((d): d is typeof d & { totalAssets: number; roe: number } =>
+        d.totalAssets != null && d.roe != null);
+
+    const avgAssets = items.length > 0
+      ? items.reduce((s, d) => s + d.totalAssets, 0) / items.length : 0;
+    const avgRoe = items.length > 0
+      ? items.reduce((s, d) => s + d.roe, 0) / items.length : 0;
+
+    return { type: "life-bubble", data: items, avgAssets, avgRoe };
+  }
+
+  // Brokers
+  const items = sectorCompanies
+    .map((c) => {
+      const m = latestMetrics[c.id] ?? {};
+      return {
+        ticker: c.ticker,
+        name: c.name,
+        debtToEquity: m.debt_to_equity ?? null,
+        roe: m.roe ?? null,
+        revenue: m.revenue ?? null,
+      };
+    })
+    .filter((d): d is typeof d & { debtToEquity: number } => d.debtToEquity != null)
+    .sort((a, b) => b.debtToEquity - a.debtToEquity);
+
+  const avgDE = items.length > 0
+    ? items.reduce((s, d) => s + d.debtToEquity, 0) / items.length : null;
+  const roeValues = items.filter((d) => d.roe != null).map((d) => d.roe!);
+  const avgROE = roeValues.length > 0
+    ? roeValues.reduce((s, v) => s + v, 0) / roeValues.length : null;
+
+  return { type: "broker-leverage", data: items, avgDE, avgROE };
+}
+
+interface HomePageProps {
+  searchParams: Promise<{ sector?: string }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = await searchParams;
+  const sectorSlug = params.sector ?? "p-and-c";
+  const activeSector = getSectorBySlug(sectorSlug) ?? null;
+
+  const data = await getOverviewData();
+
+  if (!activeSector || !data.bulkScoringData) {
+    return <div className="container px-4 py-20 text-center text-muted-foreground">Loading sector data...</div>;
+  }
+
+  const { bulkScoringData, scores, scoreMap, signalMap } = data;
+  const { companies: allCompanies, latestMetrics, sectorAverages } = bulkScoringData;
+
+  // Build sector-specific hero metrics
+  const sectorHeroMetrics = buildSectorHeroMetrics(
+    activeSector,
+    allCompanies,
+    latestMetrics,
+    bulkScoringData.timeseries
+  );
+
+  // Build story chart data
+  const storyMetric = getSectorStoryMetric(activeSector.name);
+  const sectorCompanies = allCompanies.filter((c) => c.sector === activeSector.name);
+  const storyChartData = sectorCompanies
+    .map((c) => ({
+      ticker: c.ticker,
+      value: latestMetrics[c.id]?.[storyMetric] ?? null,
+    }))
+    .filter((d): d is { ticker: string; value: number } => d.value != null);
+
+  const storyChartAvg = sectorAverages[activeSector.name]?.[storyMetric]?.avg ?? null;
+
+  // Filter top prospects to sector
+  const sectorTopProspects = [...scores]
+    .filter((s) => s.totalScore != null && s.sector === activeSector.name)
+    .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
+    .slice(0, 6)
+    .map((s) => {
+      const companyMetrics = latestMetrics[s.companyId] ?? {};
+      const sectorAvgs = sectorAverages[s.sector] ?? {};
+      const sectorAvgRecord: Record<string, number | null> = {};
+      for (const [k, v] of Object.entries(sectorAvgs)) {
+        sectorAvgRecord[k] = v.avg;
+      }
+
+      const narrative = generateFounderNarrative({
+        companyName: s.name,
+        ticker: s.ticker,
+        sector: s.sector,
+        metrics: companyMetrics as Record<string, number | null>,
+        sectorAverages: sectorAvgRecord,
+        prospectScore: s,
+      });
+
+      const signal = signalMap.get(s.companyId);
+      const premiumBase = companyMetrics.net_premiums_earned ?? companyMetrics.revenue ?? null;
+      let dollarImpact: string | null = null;
+      if (s.painMetricName && companyMetrics[s.painMetricName] != null && premiumBase) {
+        const avgData = sectorAvgs[s.painMetricName];
+        const ctx: InterpretContext = {
+          sector: s.sector,
+          sectorAvg: avgData?.avg ?? null,
+          sectorMin: avgData?.min ?? null,
+          sectorMax: avgData?.max ?? null,
+          rank: null,
+          totalInSector: null,
+          premiumBase,
+        };
+        const interp = interpretMetric(s.painMetricName, companyMetrics[s.painMetricName], ctx);
+        if (interp?.dollarImpact) {
+          dollarImpact = interp.dollarImpact;
+        }
+      }
+
+      return {
+        companyId: s.companyId,
+        ticker: s.ticker,
+        name: s.name,
+        sector: s.sector,
+        prospectScore: s.totalScore,
+        hookSentence: narrative.hookSentence,
+        dollarImpact,
+        signalLine: signal?.signalDescription ?? null,
+      } satisfies TopProspect;
+    });
+
+  // Filter disruption targets to sector and sort by sector-appropriate metric
+  const sectorDisruptionTargets = data.disruptionTargets
+    .filter((t) => t.sector === activeSector.name)
+    .sort((a, b) => {
+      const sn = activeSector.name;
+      if (sn === "P&C" || sn === "Reinsurance")
+        return (b.combinedRatio ?? -Infinity) - (a.combinedRatio ?? -Infinity);
+      if (sn === "Health")
+        return (b.mlr ?? -Infinity) - (a.mlr ?? -Infinity);
+      if (sn === "Brokers")
+        return (b.debtToEquity ?? -Infinity) - (a.debtToEquity ?? -Infinity);
+      // Life: lowest ROE first
+      return (a.roe ?? Infinity) - (b.roe ?? Infinity);
+    });
+
+  // Build hero chart data per sector
+  const heroChartData = buildHeroChartData(activeSector, sectorCompanies, latestMetrics, scoreMap);
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative border-b border-border/50 bg-gradient-to-b from-primary/[0.03] to-transparent">
-        <div className="container px-4 pt-10 pb-8 md:px-6 md:pt-14 md:pb-10">
-          <div className="max-w-2xl">
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary/60 mb-3">
-              Market Intelligence
-            </p>
-            <h1 className="text-3xl font-display tracking-tight md:text-4xl">
-              Insurance Market Intelligence
-            </h1>
-            <p className="mt-2 text-base text-muted-foreground leading-relaxed">
-              Opportunity sizing, efficiency benchmarks & disruption targets for AI insurance founders.
-            </p>
-          </div>
-          <div className="mt-8">
-            <HeroBenchmarks
-              totalPremium={overviewData.totalPremium}
-              avgCombinedRatio={overviewData.avgCombinedRatio}
-              avgExpenseRatio={overviewData.avgExpenseRatio}
-              trackedCompanies={overviewData.totalCompanies}
-              totalAutomationTAM={overviewData.totalAutomationTAM}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <div className="container px-4 md:px-6">
-        {/* Sector Opportunity Cards */}
-        <section className="py-14 border-b border-border/40 animate-fade-up delay-2">
-          <div className="flex items-baseline gap-3 mb-5">
-            <h2 className="text-2xl font-display tracking-tight">Sector Opportunities</h2>
-            <span className="text-xs text-muted-foreground">Key metrics by sector</span>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {SECTORS.map((sector) => {
-              const overview = overviewData.sectorOverviews.find(
-                (s) => s.sector === sector.name
-              );
-              const [om1, om2] = sector.opportunity_metrics;
-              const sparklineMetric = om1.metric;
-              const sparkline =
-                overviewData.sectorSparklineTrends[sector.name]?.[sparklineMetric] ?? [];
-              return (
-                <SectorOpportunityCard
-                  key={sector.slug}
-                  sector={sector.name}
-                  label={sector.label}
-                  companyCount={overview?.companyCount ?? 0}
-                  metric1={{
-                    name: om1.metric,
-                    label: om1.label,
-                    value: overview?.averages[om1.metric] ?? null,
-                  }}
-                  metric2={{
-                    name: om2.metric,
-                    label: om2.label,
-                    value: overview?.averages[om2.metric] ?? null,
-                  }}
-                  sparklineTrend={sparkline}
-                  color={sector.color.replace("bg-", "var(--chart-1)")}
-                />
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Disruption Targets */}
-        <section className="py-14 animate-fade-up delay-3">
-          <DisruptionTargetsTable targets={overviewData.disruptionTargets} />
-        </section>
-      </div>
-    </div>
+    <SectorDashboard
+      sector={activeSector}
+      heroMetrics={sectorHeroMetrics}
+      topProspects={sectorTopProspects}
+      disruptionTargets={sectorDisruptionTargets}
+      storyChartData={storyChartData}
+      storyChartAvg={storyChartAvg}
+      heroChartData={heroChartData}
+    />
   );
 }

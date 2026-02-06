@@ -15,21 +15,21 @@ const SEGMENTS = [
   {
     key: "painIntensity" as const,
     label: "Pain",
-    color: "bg-red-500",
+    color: "bg-rose-500",
     tooltip: "How far above sector average on key pain metrics",
     weight: 40,
   },
   {
     key: "urgency" as const,
     label: "Urgency",
-    color: "bg-amber-500",
+    color: "bg-yellow-500",
     tooltip: "Worsening trend (3yr slope of pain metric + ROE)",
     weight: 25,
   },
   {
     key: "abilityToPay" as const,
     label: "Budget",
-    color: "bg-blue-500",
+    color: "bg-sky-500",
     tooltip: "Revenue / premiums as budget proxy",
     weight: 20,
   },
@@ -37,7 +37,7 @@ const SEGMENTS = [
     key: "scaleFit" as const,
     label: "Scale Fit",
     color: "bg-violet-500",
-    tooltip: "Mid-range companies are the sweet spot for startups",
+    tooltip: "Gaussian score favoring mid-range revenue companies",
     weight: 15,
   },
 ];
@@ -48,7 +48,7 @@ export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
+      <div className="flex h-2.5 rounded-sm overflow-hidden bg-secondary">
         {segments.map((seg) => {
           const value = score[seg.key] ?? 0;
           const width = (value / 100) * seg.weight;
@@ -70,7 +70,7 @@ export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
           );
         })}
       </div>
-      <div className="flex gap-3 text-[10px] text-muted-foreground">
+      <div className="flex gap-3 text-xs text-muted-foreground">
         {segments.map((seg) => (
           <div key={seg.key} className="flex items-center gap-1">
             <div className={`h-1.5 w-1.5 rounded-full ${seg.color}`} />

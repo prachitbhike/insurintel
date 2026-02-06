@@ -49,21 +49,21 @@ export function LineChartComponent({
         {showGrid && (
           <CartesianGrid
             vertical={false}
-            strokeDasharray="3 3"
-            className="stroke-border/40"
+            strokeDasharray="2 6"
+            className="stroke-border/15"
           />
         )}
         <XAxis
           dataKey={xKey}
           tickLine={false}
           axisLine={false}
-          className="text-xs fill-muted-foreground"
+          className="text-[10px] fill-muted-foreground"
           tickMargin={10}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
-          className="text-xs fill-muted-foreground"
+          className="text-[10px] fill-muted-foreground"
           width={56}
           tickFormatter={yAxisTickFormatter as (value: string | number) => string}
         />
@@ -88,7 +88,7 @@ export function LineChartComponent({
             type="monotone"
             dataKey={key}
             stroke={`var(--color-${key})`}
-            strokeWidth={2}
+            strokeWidth={2.5}
             dot={{
               r: 3,
               strokeWidth: 1.5,

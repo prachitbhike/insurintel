@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkline } from "@/components/charts/sparkline";
 import { formatMetricValue } from "@/lib/metrics/formatters";
+import { getMetricDefinition } from "@/lib/metrics/definitions";
 import { MetricLabel } from "@/components/ui/metric-label";
 import Link from "next/link";
 import { type Sector } from "@/types/database";
@@ -39,6 +40,8 @@ export interface OpportunityMetricDisplay {
   name: string;
   label: string;
   value: number | null;
+  delta?: number | null;
+  interpretation?: string | null;
 }
 
 interface SectorOpportunityCardProps {
@@ -49,6 +52,26 @@ interface SectorOpportunityCardProps {
   metric2: OpportunityMetricDisplay;
   sparklineTrend: number[];
   color: string;
+}
+
+function DeltaIndicator({ metricName, delta }: { metricName: string; delta?: number | null }) {
+  if (delta == null || Math.abs(delta) < 0.01) return null;
+  const def = getMetricDefinition(metricName);
+  const isPercent = def?.unit === "percent";
+  const sign = delta >= 0 ? "+" : "";
+  const label = isPercent ? `${sign}${delta.toFixed(1)}` : `${sign}${delta.toFixed(1)}%`;
+  const higherIsBetter = def?.higher_is_better ?? true;
+  const isGood = higherIsBetter ? delta > 0 : delta < 0;
+  return (
+    <span
+      className={cn(
+        "text-xs font-mono ml-1",
+        isGood ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+      )}
+    >
+      {label}
+    </span>
+  );
 }
 
 export function SectorOpportunityCard({
@@ -75,8 +98,8 @@ export function SectorOpportunityCard({
         <CardContent className="pt-4 pb-3.5 px-4 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-[13px] font-semibold leading-tight">{label}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
+              <p className="text-sm font-semibold leading-tight">{label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {companyCount} {companyCount === 1 ? "company" : "companies"}
               </p>
             </div>
@@ -91,20 +114,32 @@ export function SectorOpportunityCard({
           </div>
           <div className="grid grid-cols-2 gap-x-4">
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                <MetricLabel metricName={metric1.name} label={metric1.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <MetricLabel metricName={metric1.name} label={metric1.label} className="text-xs" iconClassName="h-2.5 w-2.5" />
               </p>
-              <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
+              <p className="text-lg font-mono tabular-nums font-semibold mt-0.5">
                 {formatMetricValue(metric1.name, metric1.value)}
+                <DeltaIndicator metricName={metric1.name} delta={metric1.delta} />
               </p>
+              {metric1.interpretation && (
+                <p className="text-[10px] leading-snug text-muted-foreground mt-0.5">
+                  {metric1.interpretation}
+                </p>
+              )}
             </div>
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                <MetricLabel metricName={metric2.name} label={metric2.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <MetricLabel metricName={metric2.name} label={metric2.label} className="text-xs" iconClassName="h-2.5 w-2.5" />
               </p>
-              <p className="text-lg font-bold tabular-nums font-mono mt-0.5">
+              <p className="text-lg font-mono tabular-nums font-semibold mt-0.5">
                 {formatMetricValue(metric2.name, metric2.value)}
+                <DeltaIndicator metricName={metric2.name} delta={metric2.delta} />
               </p>
+              {metric2.interpretation && (
+                <p className="text-[10px] leading-snug text-muted-foreground mt-0.5">
+                  {metric2.interpretation}
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

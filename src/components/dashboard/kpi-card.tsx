@@ -46,9 +46,9 @@ export function KpiCard({
         : "border-l-border";
 
   return (
-    <Card className={cn("relative border-l-[3px]", borderColor, className)}>
+    <Card className={cn("relative border-l-[3px] rounded-sm card-glow terminal-surface", borderColor, className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
           {title}
         </CardTitle>
         {tooltip && (
@@ -63,7 +63,7 @@ export function KpiCard({
         )}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold tracking-tight">
+        <div className="text-2xl led-number data-glow font-semibold tracking-tight">
           {formatMetricValue(metricName, value)}
         </div>
         {changePct != null && (

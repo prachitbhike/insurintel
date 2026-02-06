@@ -34,20 +34,20 @@ export interface TechClassification {
 export const TECH_CLASSIFICATIONS: Record<string, TechClassification> = {
   "tech-forward": {
     classification: "tech-forward",
-    label: "Tech-Forward",
+    label: "High Density",
     color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
-    description: "High density of AI/ML/automation references in filings",
+    description: "Above-average density of technology references in 10-K filings",
   },
   "in-transition": {
     classification: "in-transition",
-    label: "In Transition",
-    color: "text-amber-600 bg-amber-500/10 border-amber-500/20",
-    description: "Moderate technology adoption signals",
+    label: "Moderate Density",
+    color: "text-yellow-600 bg-yellow-500/10 border-yellow-500/20",
+    description: "Average density of technology references in 10-K filings",
   },
   "tech-laggard": {
     classification: "tech-laggard",
-    label: "Tech Laggard",
+    label: "Low Density",
     color: "text-red-600 bg-red-500/10 border-red-500/20",
-    description: "Minimal AI/technology mentions in filings",
+    description: "Below-average density of technology references in 10-K filings",
   },
 };

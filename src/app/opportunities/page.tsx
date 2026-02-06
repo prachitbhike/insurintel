@@ -13,7 +13,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Opportunities",
   description:
-    "Insurance companies ranked by prospect attractiveness, backed by SEC filing data.",
+    "Insurance companies ranked by composite efficiency score, derived from SEC filing data.",
 };
 
 async function OpportunitiesContent() {
@@ -64,9 +64,9 @@ export default function OpportunitiesPage() {
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary/60 mb-2">
           Opportunities
         </p>
-        <h1 className="text-3xl font-display tracking-tight">Prospect Discovery</h1>
+        <h1 className="text-3xl font-display tracking-tight">Efficiency Rankings</h1>
         <p className="mt-2 text-base text-muted-foreground leading-relaxed max-w-2xl">
-          Insurance companies ranked by prospect attractiveness, backed by SEC filing data.
+          Insurance companies ranked by composite efficiency score, derived from SEC filing data.
         </p>
       </div>
       <Suspense

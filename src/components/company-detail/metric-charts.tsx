@@ -10,6 +10,7 @@ import { type TimeseriesPoint } from "@/types/company";
 import { type ChartConfig } from "@/components/ui/chart";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue, formatChartTick, periodLabel, periodSortKey } from "@/lib/metrics/formatters";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { ExportButtonGroup } from "@/components/ui/export-button-group";
 import { exportChartAsPNG } from "@/lib/export/chart-png";
 
@@ -75,9 +76,21 @@ function groupByUnit(metricNames: string[]): Map<string, string[]> {
   return groups;
 }
 
+const PREFERRED_TAB: Record<string, string> = {
+  "P&C": "underwriting",
+  Reinsurance: "underwriting",
+  Health: "profitability",
+  Life: "profitability",
+  Brokers: "profitability",
+};
+
 export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
   const applicableTabs = CHART_TABS.filter((t) => t.sectors.includes(sector));
-  const [activeTab, setActiveTab] = useState(applicableTabs[0]?.value ?? "profitability");
+  const defaultTab = PREFERRED_TAB[sector] ?? "profitability";
+  const [activeTab, setActiveTab] = useState(
+    applicableTabs.find((t) => t.value === defaultTab)?.value ?? applicableTabs[0]?.value ?? "profitability"
+  );
+  const [periodType, setPeriodType] = useState<"annual" | "quarterly">("annual");
 
   const handlePNG = async () => {
     const el = document.querySelector("[data-chart-export='metric-charts']");
@@ -86,18 +99,19 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
   };
 
   return (
-    <Card className="group">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="rounded-sm group">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
         <div className="flex items-center gap-2">
-          <CardTitle>Historical Trends</CardTitle>
+          <CardTitle className="text-sm">Historical Trends</CardTitle>
           <ExportButtonGroup onPNG={handlePNG} />
         </div>
+        <PeriodSelector value={periodType} onValueChange={setPeriodType} />
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} data-chart-export="metric-charts">
-          <TabsList className="mb-4">
+          <TabsList className="mb-3">
             {applicableTabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
+              <TabsTrigger key={tab.value} value={tab.value} className="font-mono text-[10px] uppercase rounded-sm">
                 {tab.label}
               </TabsTrigger>
             ))}
@@ -126,9 +140,14 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
               <TabsContent key={tab.value} value={tab.value}>
                 <div className={isSingleGroup ? "" : "grid gap-4 md:grid-cols-2"}>
                   {[...unitGroups.entries()].map(([unit, metrics]) => {
+                    // Filter timeseries points by period type
                     const filteredTs: Record<string, TimeseriesPoint[]> = {};
                     for (const m of metrics) {
-                      filteredTs[m] = timeseries[m] ?? [];
+                      filteredTs[m] = (timeseries[m] ?? []).filter((p) =>
+                        periodType === "annual"
+                          ? p.fiscal_quarter == null
+                          : p.fiscal_quarter != null
+                      );
                     }
 
                     // Build chart data: merge metrics by period
@@ -172,7 +191,7 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
                       formatMetricValue(name, v);
 
                     // Choose chart height based on whether we're in a grid
-                    const chartHeight = isSingleGroup ? 350 : 280;
+                    const chartHeight = isSingleGroup ? 260 : 220;
 
                     // For single-group with all metrics, decide chart type from tab config
                     // For multi-group sub-charts, always use the tab's chart type

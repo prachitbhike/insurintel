@@ -8,14 +8,16 @@ import { getLatestMetrics, getMetricTimeseries, getCompanyFinancials } from "@/l
 import { getCompanyRankings } from "@/lib/queries/sectors";
 import { getSectorAverages } from "@/lib/queries/sectors";
 import { SectorBadge } from "@/components/dashboard/sector-badge";
+import { ScoreBadge } from "@/components/scoring/score-badge";
+import { CompanyBrief } from "@/components/company-detail/company-brief";
 import { KpiGrid } from "@/components/company-detail/kpi-grid";
+import { OpportunityPanel } from "@/components/company-detail/opportunity-panel";
 import { MetricCharts } from "@/components/company-detail/metric-charts";
 import { PeerComparison } from "@/components/company-detail/peer-comparison";
 import { FinancialTable } from "@/components/company-detail/financial-table";
-import { QuickTake } from "@/components/company-detail/quick-take";
-import { FounderInsights } from "@/components/company-detail/founder-insights";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue } from "@/lib/metrics/formatters";
+import { interpretMetrics, type MetricInterpretation } from "@/lib/metrics/interpret";
 import { computeProspectScore } from "@/lib/scoring/prospect-score";
 import { generateFounderNarrative } from "@/lib/scoring/founder-narrative";
 import { type KpiValue, type TimeseriesPoint, type PeerComparison as PeerComparisonType, type FinancialRow } from "@/types/company";
@@ -116,6 +118,67 @@ function generateQuickTake(
   return sentences;
 }
 
+/** Determine the key pain metric and compute automation savings for the Opportunity Panel */
+function computeOpportunityData(
+  sector: string,
+  metrics: Record<string, number | null>,
+  sectorAvgsRecord: Record<string, number | null>,
+  sectorMinsRecord: Record<string, number | null>,
+  sectorMaxesRecord: Record<string, number | null>,
+) {
+  // Pain metric config by sector
+  const PAIN_CONFIG: Record<string, { metric: string; label: string; lowerIsBetter: boolean }> = {
+    "P&C": { metric: "expense_ratio", label: "Expense Ratio", lowerIsBetter: true },
+    Reinsurance: { metric: "expense_ratio", label: "Expense Ratio", lowerIsBetter: true },
+    Health: { metric: "medical_loss_ratio", label: "Medical Loss Ratio", lowerIsBetter: true },
+    Life: { metric: "roe", label: "Return on Equity", lowerIsBetter: false },
+    Brokers: { metric: "debt_to_equity", label: "Debt-to-Equity", lowerIsBetter: true },
+  };
+
+  const config = PAIN_CONFIG[sector];
+  if (!config) return { painMetricName: null, painMetricLabel: "", painMetricValue: null, sectorAvgPainMetric: null, sectorBestPainMetric: null, automationSavings: null };
+
+  const painMetricValue = metrics[config.metric] ?? null;
+  const sectorAvgPainMetric = sectorAvgsRecord[config.metric] ?? null;
+
+  // Best = min for lower-is-better, max for higher-is-better
+  const sectorBestPainMetric = config.lowerIsBetter
+    ? (sectorMinsRecord[config.metric] ?? null)
+    : (sectorMaxesRecord[config.metric] ?? null);
+
+  // Compute automation savings
+  let automationSavings: number | null = null;
+  if (painMetricValue != null && sectorBestPainMetric != null) {
+    const premiums = metrics["net_premiums_earned"] ?? metrics["revenue"] ?? null;
+
+    if (sector === "P&C" || sector === "Reinsurance") {
+      // Expense ratio gap * premiums
+      const gap = painMetricValue - sectorBestPainMetric;
+      if (gap > 0 && premiums != null) {
+        automationSavings = (gap / 100) * premiums;
+      }
+    } else if (sector === "Health") {
+      // Admin margin gap: (1 - MLR) gap * premiums
+      const adminRatio = 1 - painMetricValue / 100;
+      const bestAdminRatio = 1 - sectorBestPainMetric / 100;
+      const gap = adminRatio - bestAdminRatio;
+      if (gap > 0 && premiums != null) {
+        automationSavings = gap * premiums;
+      }
+    }
+    // Life and Brokers: no direct savings calculation
+  }
+
+  return {
+    painMetricName: config.metric,
+    painMetricLabel: config.label,
+    painMetricValue,
+    sectorAvgPainMetric,
+    sectorBestPainMetric,
+    automationSavings,
+  };
+}
+
 export default async function CompanyDetailPage({ params }: PageProps) {
   const { ticker } = await params;
   const decodedTicker = decodeURIComponent(ticker).toUpperCase();
@@ -130,6 +193,9 @@ export default async function CompanyDetailPage({ params }: PageProps) {
   let quarterlyPeriods: string[] = [];
   let founderNarrative: ReturnType<typeof generateFounderNarrative> | null = null;
   let prospectScoreResult: ReturnType<typeof computeProspectScore> | null = null;
+  let rankingsForGrid: { metric_name: string; rank_in_sector: number; total_in_sector: number }[] = [];
+  let opportunityData = { painMetricName: null as string | null, painMetricLabel: "", painMetricValue: null as number | null, sectorAvgPainMetric: null as number | null, sectorBestPainMetric: null as number | null, automationSavings: null as number | null };
+  let metricInterpretations: Record<string, MetricInterpretation> = {};
 
   try {
     const supabase = await createClient();
@@ -148,6 +214,13 @@ export default async function CompanyDetailPage({ params }: PageProps) {
         getCompanyFinancials(supabase, company.id, "annual"),
         getCompanyFinancials(supabase, company.id, "quarterly"),
       ]);
+
+    // Build rankings for KPI grid
+    rankingsForGrid = rankings.map((r) => ({
+      metric_name: r.metric_name,
+      rank_in_sector: r.rank_in_sector,
+      total_in_sector: r.total_in_sector,
+    }));
 
     // Build KPIs with prior year comparison
     const metricsByName = new Map<string, typeof latestMetrics[0]>();
@@ -180,13 +253,22 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       };
     });
 
-    // Build timeseries grouped by metric
+    // Build timeseries grouped by metric — quarterly from MV, annual from financials
     for (const ts of tsData) {
       if (!timeseries[ts.metric_name]) timeseries[ts.metric_name] = [];
       timeseries[ts.metric_name].push({
         fiscal_year: ts.fiscal_year,
         fiscal_quarter: ts.fiscal_quarter,
         value: ts.metric_value,
+      });
+    }
+    // Merge annual data into timeseries (MV only has quarterly)
+    for (const d of annualData) {
+      if (!timeseries[d.metric_name]) timeseries[d.metric_name] = [];
+      timeseries[d.metric_name].push({
+        fiscal_year: d.fiscal_year,
+        fiscal_quarter: null,
+        value: d.metric_value,
       });
     }
 
@@ -281,6 +363,14 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       sectorMaxes: sectorMaxesRecord,
       timeseries: tsForScoring,
     });
+    // Build timeseries lookup for narrative (metric → year → value)
+    const tsForNarrative: Record<string, Record<number, number>> = {};
+    for (const [metric, entries] of Object.entries(tsForScoring)) {
+      tsForNarrative[metric] = {};
+      for (const e of entries) {
+        tsForNarrative[metric][e.fiscal_year] = e.value;
+      }
+    }
     founderNarrative = generateFounderNarrative({
       companyName: company.name,
       ticker: company.ticker,
@@ -288,7 +378,39 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       metrics: metricsRecord,
       sectorAverages: sectorAvgsRecord,
       prospectScore: prospectScoreResult,
+      timeseries: tsForNarrative,
     });
+
+    // Compute opportunity panel data
+    opportunityData = computeOpportunityData(
+      company.sector,
+      metricsRecord,
+      sectorAvgsRecord,
+      sectorMinsRecord,
+      sectorMaxesRecord,
+    );
+
+    // Compute metric interpretations
+    const sectorAvgsForInterp: Record<string, { avg: number; min: number; max: number }> = {};
+    for (const avg of sectorAvgs as SectorAverage[]) {
+      sectorAvgsForInterp[avg.metric_name] = {
+        avg: avg.avg_value,
+        min: avg.min_value,
+        max: avg.max_value,
+      };
+    }
+    const ranksForInterp: Record<string, { rank: number; total: number }> = {};
+    for (const r of rankings) {
+      ranksForInterp[r.metric_name] = { rank: r.rank_in_sector, total: r.total_in_sector };
+    }
+    const premiumBase = metricsRecord["net_premiums_earned"] ?? metricsRecord["revenue"] ?? null;
+    metricInterpretations = interpretMetrics(
+      metricsRecord,
+      company.sector,
+      sectorAvgsForInterp,
+      premiumBase,
+      ranksForInterp,
+    );
   } catch {
     const seed = COMPANIES_SEED.find((c) => c.ticker === decodedTicker);
     if (!seed) notFound();
@@ -317,59 +439,67 @@ export default async function CompanyDetailPage({ params }: PageProps) {
   );
 
   return (
-    <div className={`container space-y-10 px-4 py-8 md:px-6 border-t-[3px] ${sectorTopBorder[company.sector as Sector] ?? ""}`}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-4xl font-display tracking-tight">
-              {company.ticker}
-            </h1>
-            <SectorBadge sector={company.sector} />
-          </div>
-          <p className="mt-1 text-muted-foreground">
+    <div className={`container space-y-5 px-4 py-5 md:px-6 border-t-2 ${sectorTopBorder[company.sector as Sector] ?? ""}`}>
+      {/* Header: Ticker, Name, Sector Badge, Score Badge, SEC link */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="font-mono text-3xl font-bold data-glow tracking-tight">
+            {company.ticker}
+          </h1>
+          <span className="text-sm text-muted-foreground truncate">
             {company.name}
-            {company.entity_name && company.entity_name !== company.name && (
-              <span className="ml-1 text-xs">({company.entity_name})</span>
-            )}
-          </p>
+          </span>
+          <SectorBadge sector={company.sector} />
+          <ScoreBadge score={prospectScoreResult?.totalScore ?? null} size="md" />
         </div>
         <Link
           href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${company.cik}&type=10-K&dateb=&owner=include&count=10`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
         >
           SEC Filings
           <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
 
+      {/* Company Brief (merged Quick Take + Founder Insights) */}
       <div className="animate-fade-up delay-1">
-        <QuickTake sentences={quickTakeSentences} />
+        <CompanyBrief
+          quickTakeSentences={quickTakeSentences}
+          founderNarrative={founderNarrative}
+        />
       </div>
 
-      {founderNarrative && (
-        <div className="animate-fade-up delay-1">
-          <FounderInsights
-            narrative={founderNarrative}
-            prospectScore={prospectScoreResult?.totalScore ?? null}
+      {/* Hero Metrics Row (4 sector-specific KPIs with rank) */}
+      <div className="animate-fade-up delay-1">
+        <KpiGrid kpis={kpis} sector={company.sector} rankings={rankingsForGrid} interpretations={metricInterpretations} />
+      </div>
+
+      {/* AI Opportunity Panel + Key Trends side by side on wide screens */}
+      <div className="animate-fade-up delay-2 grid gap-5 xl:grid-cols-2">
+        {prospectScoreResult && (
+          <OpportunityPanel
+            painMetricName={opportunityData.painMetricName}
+            painMetricLabel={opportunityData.painMetricLabel}
+            painMetricValue={opportunityData.painMetricValue}
+            sectorAvgPainMetric={opportunityData.sectorAvgPainMetric}
+            sectorBestPainMetric={opportunityData.sectorBestPainMetric}
+            automationSavings={opportunityData.automationSavings}
+            prospectScore={prospectScoreResult}
+            sector={company.sector}
           />
-        </div>
-      )}
-
-      <div className="animate-fade-up delay-2">
-        <KpiGrid kpis={kpis} sector={company.sector} />
+        )}
+        <MetricCharts timeseries={timeseries} sector={company.sector} />
       </div>
 
+      {/* Peer Comparison (horizontal bar chart only) */}
       <div className="animate-fade-up delay-3">
         <PeerComparison comparisons={peerComparisons} ticker={company.ticker} />
       </div>
 
-      <div className="animate-fade-up delay-4">
-        <MetricCharts timeseries={timeseries} sector={company.sector} />
-      </div>
-
-      <div className="animate-fade-up delay-5 grid gap-6 lg:grid-cols-1">
+      {/* Financial Data (collapsed accordion) */}
+      <div className="animate-fade-up delay-3">
         <FinancialTable
           annualData={annualFinancials}
           quarterlyData={quarterlyFinancials}

@@ -25,7 +25,7 @@ export function BenchmarkStrip({ benchmarks }: BenchmarkStripProps) {
           </h2>
         </div>
         <span className="text-xs text-muted-foreground">
-          The bar a founder needs to clear
+          Best-in-class by metric across all sectors
         </span>
       </div>
       <div className="grid gap-px sm:grid-cols-2 lg:grid-cols-4 rounded-lg border border-border/60 overflow-hidden bg-border/30">
@@ -37,7 +37,7 @@ export function BenchmarkStrip({ benchmarks }: BenchmarkStripProps) {
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               <MetricLabel metricName={b.metricName} label={b.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
             </p>
-            <p className="text-2xl font-display tabular-nums tracking-tight">
+            <p className="text-2xl font-mono tabular-nums font-semibold tracking-tight">
               {formatMetricValue(b.metricName, b.value)}
             </p>
             <p className="text-[11px] text-muted-foreground">

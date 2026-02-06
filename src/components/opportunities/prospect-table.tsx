@@ -63,7 +63,7 @@ function ScoreBadge({ score }: { score: number | null }) {
     score >= 60
       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
       : score >= 35
-        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20"
+        ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/20"
         : "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20";
   return (
     <Badge variant="outline" className={`font-mono text-xs tabular-nums ${color}`}>
@@ -246,13 +246,38 @@ export function ProspectTable({ rows }: ProspectTableProps) {
                     Score
                   </SortButton>
                 </TableHead>
-                <TableHead>Pain Point</TableHead>
+                <TableHead>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help border-b border-dashed border-muted-foreground/40">Pain Point</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">The metric where this company most underperforms vs. sector average</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableHead>
                 <TableHead>
                   <SortButton field="painVsSectorAvg" currentField={sortField} currentDir={sortDir} onClick={handleSort}>
-                    vs Avg
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help border-b border-dashed border-muted-foreground/40">vs Sector Avg</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">Difference from sector average in percentage points (pp). Positive = worse than average for this metric.</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </SortButton>
                 </TableHead>
-                <TableHead>Trend</TableHead>
+                <TableHead>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help border-b border-dashed border-muted-foreground/40">Trend</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">3-year directional trend of the pain metric</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableHead>
                 <TableHead className="text-right">
                   <SortButton field="revenueBase" currentField={sortField} currentDir={sortDir} onClick={handleSort}>
                     Revenue
@@ -260,7 +285,14 @@ export function ProspectTable({ rows }: ProspectTableProps) {
                 </TableHead>
                 <TableHead className="text-right">
                   <SortButton field="addressableSpend" currentField={sortField} currentDir={sortDir} onClick={handleSort}>
-                    Addressable $
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help border-b border-dashed border-muted-foreground/40">Expense Gap $</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">Dollar value of the expense ratio gap vs best-in-class. Formula: (company expense ratio - best) / 100 x net premiums earned.</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </SortButton>
                 </TableHead>
               </TableRow>

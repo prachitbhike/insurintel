@@ -6,6 +6,7 @@ import { getComparisonData } from "@/lib/queries/compare";
 import { computeDynamicPresets, type ComparisonPreset } from "@/lib/queries/presets";
 import { ComparePageClient } from "@/components/compare/compare-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getSectorBySlug } from "@/lib/data/sectors";
 
 export const metadata: Metadata = {
   title: "Compare Companies",
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ companies?: string }>;
+  searchParams: Promise<{ companies?: string; sector?: string }>;
 }
 
 async function CompareContent({ searchParams }: PageProps) {
@@ -23,6 +24,9 @@ async function CompareContent({ searchParams }: PageProps) {
   const initialTickers = companiesParam
     ? companiesParam.split(",").slice(0, 5)
     : [];
+
+  const sectorSlug = params.sector ?? null;
+  const sectorInfo = sectorSlug ? getSectorBySlug(sectorSlug) ?? null : null;
 
   let allCompanies: { ticker: string; name: string; sector: string }[] = [];
   let initialData = null;
@@ -48,9 +52,17 @@ async function CompareContent({ searchParams }: PageProps) {
     // Gracefully handle
   }
 
+  // If sector filter is active, pre-filter companies list (picker still shows all, but sorted)
+  const filteredCompanies = sectorInfo
+    ? [
+        ...allCompanies.filter((c) => c.sector === sectorInfo.name),
+        ...allCompanies.filter((c) => c.sector !== sectorInfo.name),
+      ]
+    : allCompanies;
+
   return (
     <ComparePageClient
-      allCompanies={allCompanies}
+      allCompanies={filteredCompanies}
       initialData={initialData}
       initialTickers={initialTickers}
       dynamicPresets={dynamicPresets}
@@ -62,10 +74,11 @@ export default function ComparePage(props: PageProps) {
   return (
     <div className="container px-4 py-8 md:px-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="text-3xl font-display tracking-tight md:text-4xl">
+          <span className="font-mono text-primary/40 mr-1">&gt;</span>
           Compare Companies
         </h1>
-        <p className="mt-1 text-muted-foreground">
+        <p className="mt-1 font-mono text-sm text-muted-foreground">
           Select up to 5 insurance companies to compare financial metrics side by side.
         </p>
       </div>

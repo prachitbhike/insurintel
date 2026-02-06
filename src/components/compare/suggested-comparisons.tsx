@@ -46,13 +46,13 @@ interface SuggestedComparisonsProps {
 
 export function SuggestedComparisons({ dynamicPresets = [] }: SuggestedComparisonsProps) {
   // Group dynamic presets by category
-  const byOpportunity = dynamicPresets.filter((p) => p.category === "By Opportunity");
+  const byMetric = dynamicPresets.filter((p) => p.category === "By Metric");
   const bySize = dynamicPresets.filter((p) => p.category === "By Size");
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3">
           By Sector
         </h3>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -62,7 +62,7 @@ export function SuggestedComparisons({ dynamicPresets = [] }: SuggestedCompariso
               href={`/compare?companies=${m.tickers.join(",")}`}
               className="group"
             >
-              <Card className="h-full transition-all duration-150 group-hover:shadow-md group-hover:border-foreground/15">
+              <Card className="h-full rounded-sm transition-all duration-150 card-glow group-hover:border-foreground/15">
                 <CardContent className="pt-4 pb-3.5 px-4 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <p className="text-[13px] font-semibold">{m.title}</p>
@@ -89,8 +89,8 @@ export function SuggestedComparisons({ dynamicPresets = [] }: SuggestedCompariso
         </div>
       </div>
 
-      {byOpportunity.length > 0 && (
-        <PresetCategory category="By Opportunity" presets={byOpportunity} />
+      {byMetric.length > 0 && (
+        <PresetCategory category="By Metric" presets={byMetric} />
       )}
 
       {bySize.length > 0 && (
