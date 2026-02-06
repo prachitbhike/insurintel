@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChartComponent } from "@/components/charts/line-chart";
 import { AreaChartComponent } from "@/components/charts/area-chart";
 import { BarChartComponent } from "@/components/charts/bar-chart";
-import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { type TimeseriesPoint } from "@/types/company";
 import { type ChartConfig } from "@/components/ui/chart";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
@@ -79,7 +78,6 @@ function groupByUnit(metricNames: string[]): Map<string, string[]> {
 export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
   const applicableTabs = CHART_TABS.filter((t) => t.sectors.includes(sector));
   const [activeTab, setActiveTab] = useState(applicableTabs[0]?.value ?? "profitability");
-  const [periodType, setPeriodType] = useState<"annual" | "quarterly">("annual");
 
   const handlePNG = async () => {
     const el = document.querySelector("[data-chart-export='metric-charts']");
@@ -94,7 +92,6 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
           <CardTitle>Historical Trends</CardTitle>
           <ExportButtonGroup onPNG={handlePNG} />
         </div>
-        <PeriodSelector value={periodType} onValueChange={setPeriodType} />
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} data-chart-export="metric-charts">
@@ -129,14 +126,9 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
               <TabsContent key={tab.value} value={tab.value}>
                 <div className={isSingleGroup ? "" : "grid gap-4 md:grid-cols-2"}>
                   {[...unitGroups.entries()].map(([unit, metrics]) => {
-                    // Filter timeseries points by period type
                     const filteredTs: Record<string, TimeseriesPoint[]> = {};
                     for (const m of metrics) {
-                      filteredTs[m] = (timeseries[m] ?? []).filter((p) =>
-                        periodType === "annual"
-                          ? p.fiscal_quarter == null
-                          : p.fiscal_quarter != null
-                      );
+                      filteredTs[m] = timeseries[m] ?? [];
                     }
 
                     // Build chart data: merge metrics by period

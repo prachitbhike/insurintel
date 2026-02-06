@@ -155,12 +155,12 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       metricsByName.set(m.metric_name, m);
     }
 
-    // Get prior year data for comparison
+    // Get prior year data for comparison (from annual financials, not quarterly MV)
     const priorYearData = new Map<string, number>();
-    for (const ts of tsData) {
-      const latest = metricsByName.get(ts.metric_name);
-      if (latest && ts.fiscal_year === latest.fiscal_year - 1) {
-        priorYearData.set(ts.metric_name, ts.metric_value);
+    for (const d of annualData) {
+      const latest = metricsByName.get(d.metric_name);
+      if (latest && d.fiscal_year === latest.fiscal_year - 1) {
+        priorYearData.set(d.metric_name, d.metric_value);
       }
     }
 
@@ -266,9 +266,9 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       sectorMaxesRecord[avg.metric_name] = avg.max_value;
     }
     const tsForScoring: Record<string, { fiscal_year: number; value: number }[]> = {};
-    for (const ts of tsData) {
-      if (!tsForScoring[ts.metric_name]) tsForScoring[ts.metric_name] = [];
-      tsForScoring[ts.metric_name].push({ fiscal_year: ts.fiscal_year, value: ts.metric_value });
+    for (const d of annualData) {
+      if (!tsForScoring[d.metric_name]) tsForScoring[d.metric_name] = [];
+      tsForScoring[d.metric_name].push({ fiscal_year: d.fiscal_year, value: d.metric_value });
     }
     prospectScoreResult = computeProspectScore({
       companyId: company.id,

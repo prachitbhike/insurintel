@@ -53,15 +53,6 @@ export function OpportunitiesClient({ rows }: OpportunitiesClientProps) {
     return rows.filter((r) => r.sector === sectorFilter);
   }, [rows, sectorFilter]);
 
-  const stats = useMemo(() => {
-    const scored = filteredRows.filter((r) => r.score != null);
-    const avgScore = scored.length > 0
-      ? Math.round(scored.reduce((s, r) => s + r.score!, 0) / scored.length)
-      : 0;
-    const totalTam = filteredRows.reduce((s, r) => s + (r.addressableSpend ?? 0), 0);
-    return { count: filteredRows.length, avgScore, totalTam };
-  }, [filteredRows]);
-
   const top10Chart = useMemo(() => {
     return [...filteredRows]
       .filter((r) => r.addressableSpend != null && r.addressableSpend > 0)
@@ -83,28 +74,6 @@ export function OpportunitiesClient({ rows }: OpportunitiesClientProps) {
 
   return (
     <div className="space-y-6">
-      {/* Summary strip */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Companies Scored</p>
-            <p className="text-2xl font-semibold tabular-nums mt-1">{stats.count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Avg Prospect Score</p>
-            <p className="text-2xl font-semibold tabular-nums mt-1">{stats.avgScore}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Addressable Market</p>
-            <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(stats.totalTam)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Sector filter tabs */}
       <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
         <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">

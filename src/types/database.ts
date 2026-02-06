@@ -91,4 +91,5 @@ export interface IndustryTimeseriesRow {
   metric_name: string;
   metric_value: number;
   fiscal_year: number;
+  fiscal_quarter: number | null;
 }

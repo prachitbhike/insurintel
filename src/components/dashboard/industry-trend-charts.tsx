@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChartComponent } from "@/components/charts/line-chart";
 import { type ChartConfig } from "@/components/ui/chart";
-import { type YearlyAggregate } from "@/lib/metrics/aggregations";
+import { type PeriodAggregate } from "@/lib/metrics/aggregations";
 import { formatMetricValue, formatChartTick } from "@/lib/metrics/formatters";
 
 const efficiencyConfig: ChartConfig = {
@@ -33,8 +33,8 @@ const pctTooltipFormatter = (v: number, name: string) =>
   formatMetricValue(name, v);
 
 interface IndustryTrendChartsProps {
-  efficiencyData: YearlyAggregate[];
-  growthData: YearlyAggregate[];
+  efficiencyData: PeriodAggregate[];
+  growthData: PeriodAggregate[];
 }
 
 export function IndustryTrendCharts({
@@ -49,13 +49,13 @@ export function IndustryTrendCharts({
             Underwriting Efficiency
           </CardTitle>
           <p className="text-[11px] text-muted-foreground leading-snug">
-            Combined Ratio & Expense Ratio (%) — industry averages over time
+            Combined Ratio & Expense Ratio (%) — quarterly industry averages
           </p>
         </CardHeader>
         <CardContent className="pt-2">
           <LineChartComponent
             data={efficiencyData}
-            xKey="year"
+            xKey="period"
             dataKeys={["combined_ratio", "expense_ratio"]}
             config={efficiencyConfig}
             height={240}
@@ -70,13 +70,13 @@ export function IndustryTrendCharts({
             Growth & Returns
           </CardTitle>
           <p className="text-[11px] text-muted-foreground leading-snug">
-            Premium Growth YoY & ROE (%) — industry averages over time
+            Premium Growth YoY & ROE (%) — quarterly industry averages
           </p>
         </CardHeader>
         <CardContent className="pt-2">
           <LineChartComponent
             data={growthData}
-            xKey="year"
+            xKey="period"
             dataKeys={["premium_growth_yoy", "roe"]}
             config={growthConfig}
             height={240}

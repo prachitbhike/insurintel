@@ -51,14 +51,10 @@ export function CommandSearch() {
   );
 
   const pages = [
-    { name: "Overview", href: "/" },
-    { name: "Companies", href: "/companies" },
-    { name: "Sectors", href: "/sectors" },
+    { name: "Dashboard", href: "/" },
     { name: "Opportunities", href: "/opportunities" },
     { name: "Compare", href: "/compare" },
     { name: "Learn / Glossary", href: "/learn" },
-    { name: "Value Chain", href: "/value-chain" },
-    { name: "Filing Tracker", href: "/filings" },
   ];
 
   const sectorBadgeColor: Record<Sector, string> = {

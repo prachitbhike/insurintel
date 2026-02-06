@@ -1,27 +1,18 @@
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSectorOverviews } from "@/lib/queries/sectors";
 import { getIndustryTimeseries } from "@/lib/queries/metrics";
 import { HeroBenchmarks } from "@/components/dashboard/hero-benchmarks";
-import { IndustryTrendCharts } from "@/components/dashboard/industry-trend-charts";
 import { SectorOpportunityCard } from "@/components/dashboard/sector-opportunity-card";
 import {
   DisruptionTargetsTable,
   type DisruptionTarget,
 } from "@/components/dashboard/disruption-targets-table";
-import {
-  BenchmarkStrip,
-  type BenchmarkEntry,
-} from "@/components/dashboard/benchmark-strip";
-import { SectorToggle } from "@/components/dashboard/sector-toggle";
 import { type LatestMetric } from "@/types/database";
 import {
-  aggregateIndustryByYear,
-  aggregateSectorByYear,
+  aggregateSectorByPeriod,
   extractCompanyTimeseries,
 } from "@/lib/metrics/aggregations";
-import { SECTORS, getSectorBySlug } from "@/lib/data/sectors";
+import { SECTORS } from "@/lib/data/sectors";
 
 export const revalidate = 3600;
 
@@ -59,9 +50,6 @@ async function getOverviewData() {
       (m) => m.metric_name === "expense_ratio"
     );
     const roes = latestMetrics.filter((m) => m.metric_name === "roe");
-    const premiumGrowths = latestMetrics.filter(
-      (m) => m.metric_name === "premium_growth_yoy"
-    );
 
     const avg = (arr: LatestMetric[]) =>
       arr.length > 0
@@ -72,20 +60,11 @@ async function getOverviewData() {
 
     const totalCompanies = new Set(latestMetrics.map((m) => m.company_id)).size;
 
-    const efficiencyData = aggregateIndustryByYear(industryTimeseries, [
-      "combined_ratio",
-      "expense_ratio",
-    ]);
-    const growthData = aggregateIndustryByYear(industryTimeseries, [
-      "premium_growth_yoy",
-      "roe",
-    ]);
-
     // Build sparkline trends for each unique primary opportunity metric across sectors
     const sparklineMetrics = new Set(SECTORS.map((s) => s.opportunity_metrics[0].metric));
     const sectorSparklineTrends: Record<string, Record<string, number[]>> = {};
     for (const metric of sparklineMetrics) {
-      const byMetric = aggregateSectorByYear(industryTimeseries, metric);
+      const byMetric = aggregateSectorByPeriod(industryTimeseries, metric);
       for (const [sectorName, values] of Object.entries(byMetric)) {
         if (!sectorSparklineTrends[sectorName]) sectorSparklineTrends[sectorName] = {};
         sectorSparklineTrends[sectorName][metric] = values;
@@ -98,7 +77,6 @@ async function getOverviewData() {
 
     const disruptionTargets: DisruptionTarget[] = [...combinedRatios]
       .sort((a, b) => b.metric_value - a.metric_value)
-      .slice(0, 10)
       .map((m) => {
         const expense = expenseRatios.find(
           (e) => e.company_id === m.company_id
@@ -143,62 +121,15 @@ async function getOverviewData() {
       }
     }
 
-    const bestCombined = [...combinedRatios].sort(
-      (a, b) => a.metric_value - b.metric_value
-    )[0];
-    const bestExpense = [...expenseRatios].sort(
-      (a, b) => a.metric_value - b.metric_value
-    )[0];
-    const bestRoe = [...roes].sort(
-      (a, b) => b.metric_value - a.metric_value
-    )[0];
-    const bestGrowth = [...premiumGrowths].sort(
-      (a, b) => b.metric_value - a.metric_value
-    )[0];
-
-    const benchmarks: BenchmarkEntry[] = [
-      {
-        label: "Lowest Combined Ratio",
-        metricName: "combined_ratio",
-        value: bestCombined?.metric_value ?? null,
-        companyTicker: bestCombined?.ticker ?? "—",
-        companyName: bestCombined?.name ?? "",
-      },
-      {
-        label: "Lowest Expense Ratio",
-        metricName: "expense_ratio",
-        value: bestExpense?.metric_value ?? null,
-        companyTicker: bestExpense?.ticker ?? "—",
-        companyName: bestExpense?.name ?? "",
-      },
-      {
-        label: "Highest ROE",
-        metricName: "roe",
-        value: bestRoe?.metric_value ?? null,
-        companyTicker: bestRoe?.ticker ?? "—",
-        companyName: bestRoe?.name ?? "",
-      },
-      {
-        label: "Fastest Premium Growth",
-        metricName: "premium_growth_yoy",
-        value: bestGrowth?.metric_value ?? null,
-        companyTicker: bestGrowth?.ticker ?? "—",
-        companyName: bestGrowth?.name ?? "",
-      },
-    ];
-
     return {
       totalCompanies,
       totalPremium: sum(premiums),
       avgCombinedRatio: avg(combinedRatios),
       avgExpenseRatio: avg(expenseRatios),
       totalAutomationTAM,
-      efficiencyData,
-      growthData,
       sectorOverviews,
       sectorSparklineTrends,
       disruptionTargets,
-      benchmarks,
     };
   } catch {
     return {
@@ -207,31 +138,14 @@ async function getOverviewData() {
       avgCombinedRatio: null,
       avgExpenseRatio: null,
       totalAutomationTAM: 0,
-      efficiencyData: [],
-      growthData: [],
       sectorOverviews: [],
       sectorSparklineTrends: {} as Record<string, Record<string, number[]>>,
       disruptionTargets: [],
-      benchmarks: [],
     };
   }
 }
 
-interface HomePageProps {
-  searchParams: Promise<{ sector?: string }>;
-}
-
-export default async function HomePage({ searchParams }: HomePageProps) {
-  const { sector: sectorSlug } = await searchParams;
-
-  // Redirect legacy ?sector= URLs to /sectors/[slug]
-  if (sectorSlug) {
-    const sector = getSectorBySlug(sectorSlug);
-    if (sector) {
-      redirect(`/sectors/${sectorSlug}`);
-    }
-  }
-
+export default async function HomePage() {
   const overviewData = await getOverviewData();
 
   return (
@@ -244,7 +158,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               Market Intelligence
             </p>
             <h1 className="text-3xl font-display tracking-tight md:text-4xl">
-              Insurance Industry Dashboard
+              Insurance Market Intelligence
             </h1>
             <p className="mt-2 text-base text-muted-foreground leading-relaxed">
               Opportunity sizing, efficiency benchmarks & disruption targets for AI insurance founders.
@@ -262,27 +176,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </section>
 
-      {/* Sector Toggle */}
-      <div className="container px-4 md:px-6 pt-6">
-        <Suspense fallback={null}>
-          <SectorToggle />
-        </Suspense>
-      </div>
-
       {/* Main Content */}
       <div className="container px-4 md:px-6">
-        {/* Industry Trends */}
-        <section className="py-14 border-b border-border/40 animate-fade-up delay-1">
-          <div className="flex items-baseline gap-3 mb-5">
-            <h2 className="text-2xl font-display tracking-tight">Industry Trends</h2>
-            <span className="text-xs text-muted-foreground">5-year averages across all tracked insurers</span>
-          </div>
-          <IndustryTrendCharts
-            efficiencyData={overviewData.efficiencyData}
-            growthData={overviewData.growthData}
-          />
-        </section>
-
         {/* Sector Opportunity Cards */}
         <section className="py-14 border-b border-border/40 animate-fade-up delay-2">
           <div className="flex items-baseline gap-3 mb-5">
@@ -323,13 +218,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </section>
 
         {/* Disruption Targets */}
-        <section className="py-14 border-b border-border/40 animate-fade-up delay-3">
+        <section className="py-14 animate-fade-up delay-3">
           <DisruptionTargetsTable targets={overviewData.disruptionTargets} />
-        </section>
-
-        {/* Benchmarks */}
-        <section className="py-14 animate-fade-up delay-4">
-          <BenchmarkStrip benchmarks={overviewData.benchmarks} />
         </section>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -36,12 +36,21 @@ interface DisruptionTargetsTableProps {
   targets: DisruptionTarget[];
 }
 
+const ALL_SECTORS: Sector[] = ["P&C", "Life", "Health", "Reinsurance", "Brokers"];
+
 export function DisruptionTargetsTable({
   targets,
 }: DisruptionTargetsTableProps) {
+  const [sectorFilter, setSectorFilter] = useState<Sector | null>(null);
+
+  const filtered = useMemo(() => {
+    if (!sectorFilter) return targets;
+    return targets.filter((t) => t.sector === sectorFilter);
+  }, [targets, sectorFilter]);
+
   const handleCopy = useCallback(async () => {
     const headers = ["#", "Ticker", "Name", "Sector", "Combined Ratio", "Expense Ratio", "ROE", "Automation $"];
-    const rows = targets.map((t, i) => [
+    const rows = filtered.map((t, i) => [
       String(i + 1),
       t.ticker,
       t.name,
@@ -52,11 +61,11 @@ export function DisruptionTargetsTable({
       t.automationSavings != null ? formatCurrency(t.automationSavings) : "—",
     ]);
     return copyTableToClipboard(headers, rows);
-  }, [targets]);
+  }, [filtered]);
 
   const handleCSV = useCallback(() => {
     const headers = ["Rank", "Ticker", "Name", "Sector", "Combined Ratio", "Expense Ratio", "ROE", "Automation Savings"];
-    const rows = targets.map((t, i) => [
+    const rows = filtered.map((t, i) => [
       String(i + 1),
       t.ticker,
       t.name,
@@ -68,28 +77,55 @@ export function DisruptionTargetsTable({
     ]);
     const csv = generateCSV(headers, rows);
     downloadCSV(csv, "disruption-targets.csv");
-  }, [targets]);
-  // Compute max values for inline bar normalization
+  }, [filtered]);
+
   const maxCombined = Math.max(
-    ...targets.map((t) => t.combinedRatio ?? 0),
+    ...filtered.map((t) => t.combinedRatio ?? 0),
     1
   );
   const maxAutomation = Math.max(
-    ...targets.map((t) => t.automationSavings ?? 0),
+    ...filtered.map((t) => t.automationSavings ?? 0),
     1
   );
 
   return (
     <Card className="shadow-sm group">
       <CardHeader className="pb-1">
-        <div className="flex items-baseline gap-3">
-          <CardTitle className="text-2xl font-display tracking-tight">
-            Disruption Targets
-          </CardTitle>
-          <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
-          <span className="text-xs text-muted-foreground">
-            Worst combined ratio first
-          </span>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-baseline gap-3">
+            <CardTitle className="text-2xl font-display tracking-tight">
+              Disruption Targets
+            </CardTitle>
+            <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
+            <span className="text-xs text-muted-foreground">
+              Worst combined ratio first
+            </span>
+          </div>
+          <div className="inline-flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
+            <button
+              onClick={() => setSectorFilter(null)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
+                !sectorFilter
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              All
+            </button>
+            {ALL_SECTORS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setSectorFilter(s)}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
+                  sectorFilter === s
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
         <p className="text-[11px] text-muted-foreground leading-snug">
           Incumbents with the highest combined ratios present the biggest
@@ -97,115 +133,123 @@ export function DisruptionTargetsTable({
         </p>
       </CardHeader>
       <CardContent className="pt-2">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-8 text-[10px] font-medium uppercase tracking-wider">#</TableHead>
-              <TableHead className="text-[10px] font-medium uppercase tracking-wider">Company</TableHead>
-              <TableHead className="text-[10px] font-medium uppercase tracking-wider">Sector</TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
-                <MetricLabel metricName="combined_ratio" label="Combined" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
-              </TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
-                <MetricLabel metricName="expense_ratio" label="Expense" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
-              </TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
-                <MetricLabel metricName="roe" label="ROE" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
-              </TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                <MetricLabel metricName="expense_ratio" label="Automation $" description="Estimated savings if this company matched the best-in-class expense ratio. Formula: (company expense ratio - best) / 100 x net premiums." className="text-[10px] font-medium uppercase tracking-wider justify-end text-amber-600 dark:text-amber-400" iconClassName="h-2.5 w-2.5" />
-              </TableHead>
-              <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider w-20">Trend</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {targets.map((t, i) => {
-              // Heat-fade: top rows get deeper red tint, fading by position
-              const heatOpacity = Math.max(0, 0.06 - i * 0.006);
-              const combinedBarWidth =
-                t.combinedRatio != null
-                  ? (t.combinedRatio / maxCombined) * 100
-                  : 0;
-              const automationBarWidth =
-                t.automationSavings != null
-                  ? (t.automationSavings / maxAutomation) * 100
-                  : 0;
+        <div className="max-h-[32rem] overflow-y-auto">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-8 text-[10px] font-medium uppercase tracking-wider">#</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider">Company</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider">Sector</TableHead>
+                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
+                  <MetricLabel metricName="combined_ratio" label="Combined" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
+                </TableHead>
+                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
+                  <MetricLabel metricName="expense_ratio" label="Expense" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
+                </TableHead>
+                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider">
+                  <MetricLabel metricName="roe" label="ROE" className="text-[10px] font-medium uppercase tracking-wider justify-end" iconClassName="h-2.5 w-2.5" />
+                </TableHead>
+                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  <MetricLabel metricName="expense_ratio" label="Automation $" description="Estimated savings if this company matched the best-in-class expense ratio. Formula: (company expense ratio - best) / 100 x net premiums." className="text-[10px] font-medium uppercase tracking-wider justify-end text-amber-600 dark:text-amber-400" iconClassName="h-2.5 w-2.5" />
+                </TableHead>
+                <TableHead className="text-right text-[10px] font-medium uppercase tracking-wider w-20">Trend</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((t, i) => {
+                const heatOpacity = Math.max(0, 0.06 - i * 0.006);
+                const combinedBarWidth =
+                  t.combinedRatio != null
+                    ? (t.combinedRatio / maxCombined) * 100
+                    : 0;
+                const automationBarWidth =
+                  t.automationSavings != null
+                    ? (t.automationSavings / maxAutomation) * 100
+                    : 0;
 
-              return (
-                <TableRow
-                  key={t.companyId}
-                  style={
-                    heatOpacity > 0
-                      ? { backgroundColor: `oklch(0.577 0.245 27.325 / ${heatOpacity})` }
-                      : undefined
-                  }
-                >
-                  <TableCell className="text-xs font-mono text-muted-foreground">
-                    {i + 1}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/companies/${t.ticker.toLowerCase()}`}
-                      className="font-semibold text-[13px] hover:underline underline-offset-2"
-                    >
-                      {t.ticker}
-                    </Link>
-                    <span className="ml-1.5 text-[11px] text-muted-foreground hidden md:inline">
-                      {t.name}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <SectorBadge sector={t.sector} className="text-[10px]" />
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium">
-                    <span className="relative inline-flex items-center justify-end w-full">
-                      <span
-                        className="absolute right-0 top-0 bottom-0 rounded-sm bg-destructive/10"
-                        style={{ width: `${combinedBarWidth}%` }}
-                      />
-                      <span className="relative">
-                        {formatMetricValue("combined_ratio", t.combinedRatio)}
+                return (
+                  <TableRow
+                    key={t.companyId}
+                    style={
+                      heatOpacity > 0
+                        ? { backgroundColor: `oklch(0.577 0.245 27.325 / ${heatOpacity})` }
+                        : undefined
+                    }
+                  >
+                    <TableCell className="text-xs font-mono text-muted-foreground">
+                      {i + 1}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/companies/${t.ticker.toLowerCase()}`}
+                        className="font-semibold text-[13px] hover:underline underline-offset-2"
+                      >
+                        {t.ticker}
+                      </Link>
+                      <span className="ml-1.5 text-[11px] text-muted-foreground hidden md:inline">
+                        {t.name}
                       </span>
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums font-mono">
-                    {formatMetricValue("expense_ratio", t.expenseRatio)}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums font-mono">
-                    {formatMetricValue("roe", t.roe)}
-                  </TableCell>
-                  <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium text-amber-600 dark:text-amber-400">
-                    <span className="relative inline-flex items-center justify-end w-full">
-                      <span
-                        className="absolute right-0 top-0 bottom-0 rounded-sm bg-amber-500/10"
-                        style={{ width: `${automationBarWidth}%` }}
-                      />
-                      <span className="relative">
-                        {t.automationSavings != null
-                          ? formatCurrency(t.automationSavings)
-                          : "—"}
-                      </span>
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end">
-                      {t.trend.length > 1 ? (
-                        <Sparkline
-                          data={t.trend}
-                          color="var(--chart-1)"
-                          height={22}
-                          width={56}
+                    </TableCell>
+                    <TableCell>
+                      <SectorBadge sector={t.sector} className="text-[10px]" />
+                    </TableCell>
+                    <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium">
+                      <span className="relative inline-flex items-center justify-end w-full">
+                        <span
+                          className="absolute right-0 top-0 bottom-0 rounded-sm bg-destructive/10"
+                          style={{ width: `${combinedBarWidth}%` }}
                         />
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
-                      )}
-                    </div>
+                        <span className="relative">
+                          {formatMetricValue("combined_ratio", t.combinedRatio)}
+                        </span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right text-[13px] tabular-nums font-mono">
+                      {formatMetricValue("expense_ratio", t.expenseRatio)}
+                    </TableCell>
+                    <TableCell className="text-right text-[13px] tabular-nums font-mono">
+                      {formatMetricValue("roe", t.roe)}
+                    </TableCell>
+                    <TableCell className="text-right text-[13px] tabular-nums font-mono font-medium text-amber-600 dark:text-amber-400">
+                      <span className="relative inline-flex items-center justify-end w-full">
+                        <span
+                          className="absolute right-0 top-0 bottom-0 rounded-sm bg-amber-500/10"
+                          style={{ width: `${automationBarWidth}%` }}
+                        />
+                        <span className="relative">
+                          {t.automationSavings != null
+                            ? formatCurrency(t.automationSavings)
+                            : "—"}
+                        </span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        {t.trend.length > 1 ? (
+                          <Sparkline
+                            data={t.trend}
+                            color="var(--chart-1)"
+                            height={22}
+                            width={56}
+                          />
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    No companies match this sector.
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );

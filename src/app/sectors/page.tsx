@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSectorOverviews } from "@/lib/queries/sectors";
 import { getIndustryTimeseries } from "@/lib/queries/metrics";
 import { SectorOverviewGrid } from "@/components/sectors/sector-overview-grid";
-import { aggregateSectorByYear } from "@/lib/metrics/aggregations";
+import { aggregateSectorByPeriod } from "@/lib/metrics/aggregations";
 import { SECTORS } from "@/lib/data/sectors";
 
 export const revalidate = 3600;
@@ -27,7 +27,7 @@ export default async function SectorsPage() {
     ]);
     sectorOverviews = overviews;
     for (const metric of sparklineMetrics) {
-      const byMetric = aggregateSectorByYear(timeseries, metric);
+      const byMetric = aggregateSectorByPeriod(timeseries, metric);
       for (const [sectorName, values] of Object.entries(byMetric)) {
         if (!sectorSparklineTrends[sectorName]) sectorSparklineTrends[sectorName] = {};
         sectorSparklineTrends[sectorName][metric] = values;

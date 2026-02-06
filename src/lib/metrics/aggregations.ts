@@ -1,37 +1,43 @@
 import { type IndustryTimeseriesRow } from "@/types/database";
+import { periodLabel, periodSortKey } from "@/lib/metrics/formatters";
 
-export interface YearlyAggregate {
-  year: number;
-  [metricKey: string]: number | null;
+export interface PeriodAggregate {
+  period: string;
+  sortKey: number;
+  [metricKey: string]: number | string | null;
 }
 
 /**
- * Aggregates timeseries rows into yearly industry averages for charting.
- * Returns one object per year with avg values for each metric.
+ * Aggregates timeseries rows into per-period industry averages for charting.
+ * Keys on (fiscal_year, fiscal_quarter) — works for both quarterly and annual data.
  */
-export function aggregateIndustryByYear(
+export function aggregateIndustryByPeriod(
   rows: IndustryTimeseriesRow[],
   metricNames: string[]
-): YearlyAggregate[] {
-  const yearMap = new Map<number, Map<string, number[]>>();
+): PeriodAggregate[] {
+  const periodMap = new Map<string, { sortKey: number; metrics: Map<string, number[]> }>();
 
   for (const row of rows) {
     if (!metricNames.includes(row.metric_name)) continue;
-    if (!yearMap.has(row.fiscal_year)) {
-      yearMap.set(row.fiscal_year, new Map());
+    const label = periodLabel(row.fiscal_year, row.fiscal_quarter);
+    const sk = periodSortKey(row.fiscal_year, row.fiscal_quarter);
+
+    if (!periodMap.has(label)) {
+      periodMap.set(label, { sortKey: sk, metrics: new Map() });
     }
-    const metricMap = yearMap.get(row.fiscal_year)!;
-    if (!metricMap.has(row.metric_name)) {
-      metricMap.set(row.metric_name, []);
+    const entry = periodMap.get(label)!;
+    if (!entry.metrics.has(row.metric_name)) {
+      entry.metrics.set(row.metric_name, []);
     }
-    metricMap.get(row.metric_name)!.push(row.metric_value);
+    entry.metrics.get(row.metric_name)!.push(row.metric_value);
   }
 
-  const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
+  const periods = Array.from(periodMap.entries()).sort(
+    (a, b) => a[1].sortKey - b[1].sortKey
+  );
 
-  return years.map((year) => {
-    const metricMap = yearMap.get(year)!;
-    const entry: YearlyAggregate = { year };
+  return periods.map(([label, { sortKey, metrics: metricMap }]) => {
+    const entry: PeriodAggregate = { period: label, sortKey };
     for (const name of metricNames) {
       const values = metricMap.get(name);
       entry[name] =
@@ -45,31 +51,37 @@ export function aggregateIndustryByYear(
 
 /**
  * Aggregates timeseries by sector for a single metric.
- * Returns { sectorName: [val_year1, val_year2, ...] } for sparklines.
+ * Returns { sectorName: [val_period1, val_period2, ...] } for sparklines.
  */
-export function aggregateSectorByYear(
+export function aggregateSectorByPeriod(
   rows: IndustryTimeseriesRow[],
   metricName: string
 ): Record<string, number[]> {
-  const sectorYearMap = new Map<string, Map<number, number[]>>();
+  const sectorPeriodMap = new Map<
+    string,
+    Map<string, { sortKey: number; values: number[] }>
+  >();
 
   for (const row of rows) {
     if (row.metric_name !== metricName) continue;
-    if (!sectorYearMap.has(row.sector)) {
-      sectorYearMap.set(row.sector, new Map());
+    if (!sectorPeriodMap.has(row.sector)) {
+      sectorPeriodMap.set(row.sector, new Map());
     }
-    const yearMap = sectorYearMap.get(row.sector)!;
-    if (!yearMap.has(row.fiscal_year)) {
-      yearMap.set(row.fiscal_year, []);
+    const label = periodLabel(row.fiscal_year, row.fiscal_quarter);
+    const sk = periodSortKey(row.fiscal_year, row.fiscal_quarter);
+    const periodMap = sectorPeriodMap.get(row.sector)!;
+    if (!periodMap.has(label)) {
+      periodMap.set(label, { sortKey: sk, values: [] });
     }
-    yearMap.get(row.fiscal_year)!.push(row.metric_value);
+    periodMap.get(label)!.values.push(row.metric_value);
   }
 
   const result: Record<string, number[]> = {};
-  for (const [sector, yearMap] of sectorYearMap) {
-    const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
-    result[sector] = years.map((year) => {
-      const values = yearMap.get(year)!;
+  for (const [sector, periodMap] of sectorPeriodMap) {
+    const sorted = Array.from(periodMap.entries()).sort(
+      (a, b) => a[1].sortKey - b[1].sortKey
+    );
+    result[sector] = sorted.map(([, { values }]) => {
       return values.reduce((s, v) => s + v, 0) / values.length;
     });
   }
@@ -79,7 +91,7 @@ export function aggregateSectorByYear(
 
 /**
  * Extracts a single company's timeseries for a metric as a number array.
- * Used for per-company sparklines.
+ * Sorted by (fiscal_year, fiscal_quarter). Used for per-company sparklines.
  */
 export function extractCompanyTimeseries(
   rows: IndustryTimeseriesRow[],
@@ -90,6 +102,10 @@ export function extractCompanyTimeseries(
     .filter(
       (r) => r.metric_name === metricName && r.company_id === companyId
     )
-    .sort((a, b) => a.fiscal_year - b.fiscal_year)
+    .sort((a, b) => {
+      const skA = periodSortKey(a.fiscal_year, a.fiscal_quarter);
+      const skB = periodSortKey(b.fiscal_year, b.fiscal_quarter);
+      return skA - skB;
+    })
     .map((r) => r.metric_value);
 }

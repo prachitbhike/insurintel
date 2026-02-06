@@ -31,7 +31,8 @@ export async function getMetricTimeseries(
     .from("mv_metric_timeseries")
     .select("*")
     .eq("company_id", companyId)
-    .order("fiscal_year", { ascending: true });
+    .order("fiscal_year", { ascending: true })
+    .order("fiscal_quarter", { ascending: true });
 
   if (metricNames && metricNames.length > 0) {
     query = query.in("metric_name", metricNames);
@@ -89,10 +90,10 @@ export async function getIndustryTimeseries(
   const [timeseriesRes, companiesRes] = await Promise.all([
     supabase
       .from("mv_metric_timeseries")
-      .select("company_id, ticker, metric_name, metric_value, fiscal_year")
+      .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
       .in("metric_name", metricNames)
-      .eq("period_type", "annual")
-      .order("fiscal_year", { ascending: true }),
+      .order("fiscal_year", { ascending: true })
+      .order("fiscal_quarter", { ascending: true }),
     supabase.from("companies").select("id, sector"),
   ]);
 
@@ -137,7 +138,7 @@ export async function getBulkScoringData(
       .in("metric_name", SCORING_METRICS),
     supabase.from("mv_sector_averages").select("*"),
     supabase
-      .from("mv_metric_timeseries")
+      .from("financial_metrics")
       .select("company_id, metric_name, metric_value, fiscal_year")
       .in("metric_name", SCORING_METRICS)
       .eq("period_type", "annual")

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -10,7 +9,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LineChartComponent } from "@/components/charts/line-chart";
-import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { type MetricTimeseries } from "@/types/database";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { formatMetricValue, formatChartTick, periodLabel, periodSortKey } from "@/lib/metrics/formatters";
@@ -49,14 +47,7 @@ export function ComparisonChart({
   selectedMetric,
   onMetricChange,
 }: ComparisonChartProps) {
-  const [periodType, setPeriodType] = useState<"annual" | "quarterly">("annual");
-
-  const allTsData = timeseries[selectedMetric] ?? [];
-  const tsData = allTsData.filter((d) =>
-    periodType === "annual"
-      ? d.fiscal_quarter == null
-      : d.fiscal_quarter != null
-  );
+  const tsData = timeseries[selectedMetric] ?? [];
   const def = METRIC_DEFINITIONS[selectedMetric];
   const unit = def?.unit ?? "number";
 
@@ -109,7 +100,6 @@ export function ComparisonChart({
           <div className="flex items-center gap-2">
             <CardTitle>Trend Comparison</CardTitle>
             <ExportButtonGroup onPNG={handlePNG} />
-            <PeriodSelector value={periodType} onValueChange={setPeriodType} />
           </div>
           {def && (
             <p className="text-xs text-muted-foreground mt-0.5">

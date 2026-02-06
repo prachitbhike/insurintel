@@ -55,7 +55,8 @@ export async function getComparisonData(
     .from("mv_metric_timeseries")
     .select("*")
     .in("company_id", companyIds)
-    .order("fiscal_year", { ascending: true });
+    .order("fiscal_year", { ascending: true })
+    .order("fiscal_quarter", { ascending: true });
 
   if (metricNames && metricNames.length > 0) {
     tsQuery = tsQuery.in("metric_name", metricNames);

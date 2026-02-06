@@ -80,8 +80,8 @@ export default async function SectorDetailPage({ params }: PageProps) {
 
     const [{ data: tsRows }, { data: qTsRows }] = await Promise.all([
       supabase
-        .from("mv_metric_timeseries")
-        .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
+        .from("financial_metrics")
+        .select("company_id, metric_name, metric_value, fiscal_year, fiscal_quarter")
         .in("company_id", companyIds)
         .in("metric_name", sector.key_metrics)
         .eq("period_type", "annual")
@@ -91,13 +91,19 @@ export default async function SectorDetailPage({ params }: PageProps) {
         .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
         .in("company_id", companyIds)
         .in("metric_name", sector.key_metrics)
-        .eq("period_type", "quarterly")
-        .order("fiscal_year", { ascending: true }),
+        .order("fiscal_year", { ascending: true })
+        .order("fiscal_quarter", { ascending: true }),
     ]);
+
+    // Build ticker lookup for base table rows (no ticker column)
+    const tickerById = new Map<string, string>();
+    for (const c of companies) tickerById.set(c.id, c.ticker);
 
     // Build annual trend data
     const metricYearMap = new Map<string, Map<number, Map<string, number>>>();
     for (const row of tsRows ?? []) {
+      const ticker = tickerById.get(row.company_id);
+      if (!ticker) continue;
       if (!metricYearMap.has(row.metric_name)) {
         metricYearMap.set(row.metric_name, new Map());
       }
@@ -105,7 +111,7 @@ export default async function SectorDetailPage({ params }: PageProps) {
       if (!yearMap.has(row.fiscal_year)) {
         yearMap.set(row.fiscal_year, new Map());
       }
-      yearMap.get(row.fiscal_year)!.set(row.ticker, row.metric_value);
+      yearMap.get(row.fiscal_year)!.set(ticker, row.metric_value);
     }
 
     for (const [metric, yearMap] of metricYearMap) {
@@ -123,6 +129,8 @@ export default async function SectorDetailPage({ params }: PageProps) {
     // Build quarterly trend data
     const metricQuarterMap = new Map<string, Map<string, Map<string, number>>>();
     for (const row of qTsRows ?? []) {
+      const ticker = tickerById.get(row.company_id);
+      if (!ticker) continue;
       if (!metricQuarterMap.has(row.metric_name)) {
         metricQuarterMap.set(row.metric_name, new Map());
       }
@@ -131,7 +139,7 @@ export default async function SectorDetailPage({ params }: PageProps) {
       if (!qMap.has(periodKey)) {
         qMap.set(periodKey, new Map());
       }
-      qMap.get(periodKey)!.set(row.ticker, row.metric_value);
+      qMap.get(periodKey)!.set(ticker, row.metric_value);
     }
 
     for (const [metric, qMap] of metricQuarterMap) {
