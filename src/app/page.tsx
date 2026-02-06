@@ -1,8 +1,7 @@
 import { Suspense } from "react";
-import { Zap, Info } from "lucide-react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSectorOverviews, getSectorAverages } from "@/lib/queries/sectors";
-import { getCompaniesBySector } from "@/lib/queries/companies";
+import { getSectorOverviews } from "@/lib/queries/sectors";
 import { getIndustryTimeseries } from "@/lib/queries/metrics";
 import { HeroBenchmarks } from "@/components/dashboard/hero-benchmarks";
 import { IndustryTrendCharts } from "@/components/dashboard/industry-trend-charts";
@@ -16,23 +15,14 @@ import {
   type BenchmarkEntry,
 } from "@/components/dashboard/benchmark-strip";
 import { SectorToggle } from "@/components/dashboard/sector-toggle";
-import { SectorTrendCharts, type SectorTrendData } from "@/components/sectors/sector-trend-charts";
-import { CompaniesTable } from "@/components/companies/companies-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { SECTORS, getSectorBySlug } from "@/lib/data/sectors";
-import { type CompanyListItem } from "@/types/company";
-import { type LatestMetric, type SectorAverage } from "@/types/database";
+import { type LatestMetric } from "@/types/database";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import {
   aggregateIndustryByYear,
   aggregateSectorByYear,
   extractCompanyTimeseries,
 } from "@/lib/metrics/aggregations";
+import { SECTORS, getSectorBySlug } from "@/lib/data/sectors";
 
 export const revalidate = 3600;
 
@@ -135,7 +125,6 @@ async function getOverviewData() {
         };
       });
 
-    // Compute total automation TAM across all companies
     let totalAutomationTAM = 0;
     for (const expense of expenseRatios) {
       const premium = premiums.find(
@@ -222,145 +211,6 @@ async function getOverviewData() {
   }
 }
 
-export interface ComputedHeroStat {
-  title: string;
-  metricName: string;
-  value: number | null;
-  tooltip: string;
-}
-
-async function getSectorDetailData(slug: string) {
-  const sector = getSectorBySlug(slug);
-  if (!sector) return null;
-
-  let averages: Record<string, number> = {};
-  let sectorAvgRows: SectorAverage[] = [];
-  let trendData: SectorTrendData = {};
-  let tickers: string[] = [];
-  let tableData: CompanyListItem[] = [];
-  let heroStats: ComputedHeroStat[] = [];
-
-  try {
-    const supabase = await createClient();
-    const [sectorAvgs, companies, metricsRes] = await Promise.all([
-      getSectorAverages(supabase, sector.name),
-      getCompaniesBySector(supabase, sector.name),
-      supabase
-        .from("mv_latest_metrics")
-        .select("*")
-        .eq("sector", sector.name),
-    ]);
-
-    sectorAvgRows = sectorAvgs;
-    for (const avg of sectorAvgs) {
-      averages[avg.metric_name] = avg.avg_value;
-    }
-
-    // Fetch timeseries for all companies in this sector
-    const companyIds = companies.map((c) => c.id);
-    tickers = companies.map((c) => c.ticker).sort();
-
-    const { data: tsRows } = await supabase
-      .from("mv_metric_timeseries")
-      .select("company_id, ticker, metric_name, metric_value, fiscal_year")
-      .in("company_id", companyIds)
-      .in("metric_name", sector.key_metrics)
-      .eq("period_type", "annual")
-      .order("fiscal_year", { ascending: true });
-
-    // Build trend data: { metric -> [{ year, TICKER1: val, TICKER2: val, ... }] }
-    const metricYearMap = new Map<string, Map<number, Map<string, number>>>();
-    for (const row of tsRows ?? []) {
-      if (!metricYearMap.has(row.metric_name)) {
-        metricYearMap.set(row.metric_name, new Map());
-      }
-      const yearMap = metricYearMap.get(row.metric_name)!;
-      if (!yearMap.has(row.fiscal_year)) {
-        yearMap.set(row.fiscal_year, new Map());
-      }
-      yearMap.get(row.fiscal_year)!.set(row.ticker, row.metric_value);
-    }
-
-    for (const [metric, yearMap] of metricYearMap) {
-      const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
-      trendData[metric] = years.map((year) => {
-        const tickerVals = yearMap.get(year)!;
-        const entry: Record<string, number | null> = { year };
-        for (const t of tickers) {
-          entry[t] = tickerVals.get(t) ?? null;
-        }
-        return entry as { year: number; [ticker: string]: number | null };
-      });
-    }
-
-    const metrics = (metricsRes.data ?? []) as LatestMetric[];
-    const metricsByCompany = new Map<string, Map<string, number>>();
-    for (const m of metrics) {
-      if (!metricsByCompany.has(m.company_id)) {
-        metricsByCompany.set(m.company_id, new Map());
-      }
-      metricsByCompany.get(m.company_id)!.set(m.metric_name, m.metric_value);
-    }
-
-    // Compute hero stats from config
-    heroStats = sector.hero_stats.map((hs) => {
-      let value: number | null = null;
-
-      if (hs.aggregation === "avg") {
-        const avgRow = sectorAvgRows.find((a) => a.metric_name === hs.metricName);
-        value = avgRow?.avg_value ?? null;
-      } else if (hs.aggregation === "sum") {
-        // Sum across unique companies (dedup by company_id, take latest)
-        const companyValues = new Map<string, number>();
-        for (const m of metrics) {
-          if (m.metric_name === hs.metricName) {
-            companyValues.set(m.company_id, m.metric_value);
-          }
-        }
-        if (companyValues.size > 0) {
-          value = 0;
-          for (const v of companyValues.values()) {
-            value += v;
-          }
-        }
-      } else if (hs.aggregation === "spread") {
-        const avgRow = sectorAvgRows.find((a) => a.metric_name === hs.metricName);
-        if (avgRow) {
-          value = avgRow.max_value - avgRow.min_value;
-        }
-      }
-
-      return {
-        title: hs.title,
-        metricName: hs.metricName,
-        value,
-        tooltip: hs.tooltip,
-      };
-    });
-
-    tableData = companies.map((c) => {
-      const cm = metricsByCompany.get(c.id);
-      return {
-        id: c.id,
-        ticker: c.ticker,
-        name: c.name,
-        sector: c.sector,
-        sub_sector: c.sub_sector,
-        combined_ratio: cm?.get("combined_ratio") ?? null,
-        roe: cm?.get("roe") ?? null,
-        net_premiums_earned: cm?.get("net_premiums_earned") ?? null,
-        premium_growth_yoy: cm?.get("premium_growth_yoy") ?? null,
-        eps: cm?.get("eps") ?? null,
-        sparkline_data: [],
-      };
-    });
-  } catch {
-    // Gracefully handle
-  }
-
-  return { sector, averages, trendData, tickers, tableData, heroStats };
-}
-
 interface HomePageProps {
   searchParams: Promise<{ sector?: string }>;
 }
@@ -368,12 +218,15 @@ interface HomePageProps {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { sector: sectorSlug } = await searchParams;
 
-  // Validate sector slug — fall back to industry view on invalid
-  const sectorDetail = sectorSlug ? await getSectorDetailData(sectorSlug) : null;
-  const isIndustryView = !sectorDetail;
+  // Redirect legacy ?sector= URLs to /sectors/[slug]
+  if (sectorSlug) {
+    const sector = getSectorBySlug(sectorSlug);
+    if (sector) {
+      redirect(`/sectors/${sectorSlug}`);
+    }
+  }
 
-  // Only fetch overview data when showing industry view
-  const overviewData = isIndustryView ? await getOverviewData() : null;
+  const overviewData = await getOverviewData();
 
   return (
     <div className="min-h-screen">
@@ -382,61 +235,24 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="container px-4 pt-10 pb-8 md:px-6 md:pt-14 md:pb-10">
           <div className="max-w-2xl">
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary/60 mb-3">
-              {sectorDetail ? sectorDetail.sector.label : "Market Intelligence"}
+              Market Intelligence
             </p>
             <h1 className="text-3xl font-display tracking-tight md:text-4xl">
-              {sectorDetail
-                ? sectorDetail.sector.label
-                : "Insurance Industry Dashboard"}
+              Insurance Industry Dashboard
             </h1>
             <p className="mt-2 text-base text-muted-foreground leading-relaxed">
-              {sectorDetail
-                ? sectorDetail.sector.description
-                : "Opportunity sizing, efficiency benchmarks & disruption targets for AI insurance founders."}
+              Opportunity sizing, efficiency benchmarks & disruption targets for AI insurance founders.
             </p>
           </div>
-          {isIndustryView && overviewData && (
-            <div className="mt-8">
-              <HeroBenchmarks
-                totalPremium={overviewData.totalPremium}
-                avgCombinedRatio={overviewData.avgCombinedRatio}
-                avgExpenseRatio={overviewData.avgExpenseRatio}
-                trackedCompanies={overviewData.totalCompanies}
-                totalAutomationTAM={overviewData.totalAutomationTAM}
-              />
-            </div>
-          )}
-          {sectorDetail && sectorDetail.heroStats.length > 0 && (
-            <div className="mt-8">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {sectorDetail.heroStats.map((stat, i) => (
-                  <Card
-                    key={i}
-                    className="border-border/60 bg-card/80 backdrop-blur-sm shadow-sm"
-                  >
-                    <CardHeader className="flex flex-row items-center justify-between pb-1">
-                      <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        {stat.title}
-                      </CardTitle>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground/40 cursor-help shrink-0" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">{stat.tooltip}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold tracking-tight font-mono">
-                        {formatMetricValue(stat.metricName, stat.value)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="mt-8">
+            <HeroBenchmarks
+              totalPremium={overviewData.totalPremium}
+              avgCombinedRatio={overviewData.avgCombinedRatio}
+              avgExpenseRatio={overviewData.avgExpenseRatio}
+              trackedCompanies={overviewData.totalCompanies}
+              totalAutomationTAM={overviewData.totalAutomationTAM}
+            />
+          </div>
         </div>
       </section>
 
@@ -449,104 +265,60 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       {/* Main Content */}
       <div className="container px-4 md:px-6">
-        {isIndustryView && overviewData ? (
-          <>
-            {/* Industry Trends */}
-            <section className="py-14 border-b border-border/40 animate-fade-up delay-1">
-              <div className="flex items-baseline gap-3 mb-5">
-                <h2 className="text-2xl font-display tracking-tight">Industry Trends</h2>
-                <span className="text-xs text-muted-foreground">5-year averages across all tracked insurers</span>
-              </div>
-              <IndustryTrendCharts
-                efficiencyData={overviewData.efficiencyData}
-                growthData={overviewData.growthData}
-              />
-            </section>
-
-            {/* Sector Opportunity Cards */}
-            <section className="py-14 border-b border-border/40 animate-fade-up delay-2">
-              <div className="flex items-baseline gap-3 mb-5">
-                <h2 className="text-2xl font-display tracking-tight">Sector Opportunities</h2>
-                <span className="text-xs text-muted-foreground">Higher expense ratio = more automation upside</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                {SECTORS.map((sector) => {
-                  const overview = overviewData.sectorOverviews.find(
-                    (s) => s.sector === sector.name
-                  );
-                  return (
-                    <SectorOpportunityCard
-                      key={sector.slug}
-                      sector={sector.name}
-                      label={sector.label}
-                      companyCount={overview?.companyCount ?? 0}
-                      avgExpenseRatio={
-                        overview?.averages["expense_ratio"] ?? null
-                      }
-                      premiumGrowth={
-                        overview?.averages["premium_growth_yoy"] ?? null
-                      }
-                      expenseRatioTrend={
-                        overviewData.sectorExpenseTrends[sector.name] ?? []
-                      }
-                      color={sector.color.replace("bg-", "var(--chart-1)")}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Disruption Targets */}
-            <section className="py-14 border-b border-border/40 animate-fade-up delay-3">
-              <DisruptionTargetsTable targets={overviewData.disruptionTargets} />
-            </section>
-
-            {/* Benchmarks */}
-            <section className="py-14 animate-fade-up delay-4">
-              <BenchmarkStrip benchmarks={overviewData.benchmarks} />
-            </section>
-          </>
-        ) : sectorDetail ? (
-          <div className="space-y-6 py-8">
-            {/* AI Opportunity Narrative */}
-            {sectorDetail.sector.ai_opportunities.length > 0 && (
-              <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Zap className="h-4 w-4 text-primary/60" />
-                  <h3 className="text-sm font-semibold">
-                    Where AI Wins in {sectorDetail.sector.label}
-                  </h3>
-                </div>
-                <ul className="grid gap-2 sm:grid-cols-2">
-                  {sectorDetail.sector.ai_opportunities.map((opp, i) => (
-                    <li key={i} className="flex gap-2 text-xs text-muted-foreground leading-relaxed">
-                      <span className="text-primary/40 shrink-0">-</span>
-                      {opp}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Trend Charts */}
-            <SectorTrendCharts
-              trendData={sectorDetail.trendData}
-              availableMetrics={sectorDetail.sector.key_metrics}
-              tickers={sectorDetail.tickers}
-            />
-
-            {/* Companies Table */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">
-                Companies in {sectorDetail.sector.label}
-              </h2>
-              <CompaniesTable
-                data={sectorDetail.tableData}
-                initialSectorFilter={[sectorDetail.sector.name]}
-              />
-            </div>
+        {/* Industry Trends */}
+        <section className="py-14 border-b border-border/40 animate-fade-up delay-1">
+          <div className="flex items-baseline gap-3 mb-5">
+            <h2 className="text-2xl font-display tracking-tight">Industry Trends</h2>
+            <span className="text-xs text-muted-foreground">5-year averages across all tracked insurers</span>
           </div>
-        ) : null}
+          <IndustryTrendCharts
+            efficiencyData={overviewData.efficiencyData}
+            growthData={overviewData.growthData}
+          />
+        </section>
+
+        {/* Sector Opportunity Cards */}
+        <section className="py-14 border-b border-border/40 animate-fade-up delay-2">
+          <div className="flex items-baseline gap-3 mb-5">
+            <h2 className="text-2xl font-display tracking-tight">Sector Opportunities</h2>
+            <span className="text-xs text-muted-foreground">Higher expense ratio = more automation upside</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {SECTORS.map((sector) => {
+              const overview = overviewData.sectorOverviews.find(
+                (s) => s.sector === sector.name
+              );
+              return (
+                <SectorOpportunityCard
+                  key={sector.slug}
+                  sector={sector.name}
+                  label={sector.label}
+                  companyCount={overview?.companyCount ?? 0}
+                  avgExpenseRatio={
+                    overview?.averages["expense_ratio"] ?? null
+                  }
+                  premiumGrowth={
+                    overview?.averages["premium_growth_yoy"] ?? null
+                  }
+                  expenseRatioTrend={
+                    overviewData.sectorExpenseTrends[sector.name] ?? []
+                  }
+                  color={sector.color.replace("bg-", "var(--chart-1)")}
+                />
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Disruption Targets */}
+        <section className="py-14 border-b border-border/40 animate-fade-up delay-3">
+          <DisruptionTargetsTable targets={overviewData.disruptionTargets} />
+        </section>
+
+        {/* Benchmarks */}
+        <section className="py-14 animate-fade-up delay-4">
+          <BenchmarkStrip benchmarks={overviewData.benchmarks} />
+        </section>
       </div>
     </div>
   );

@@ -7,6 +7,11 @@ export interface HeroStat {
   tooltip: string;
 }
 
+export interface OpportunityMetric {
+  metric: string;
+  label: string;
+}
+
 export interface SectorInfo {
   name: Sector;
   slug: string;
@@ -16,6 +21,7 @@ export interface SectorInfo {
   key_metrics: string[];
   ai_opportunities: string[];
   hero_stats: HeroStat[];
+  opportunity_metrics: [OpportunityMetric, OpportunityMetric];
 }
 
 export const SECTORS: SectorInfo[] = [
@@ -65,6 +71,10 @@ export const SECTORS: SectorInfo[] = [
         tooltip: "Gap between the most and least efficient insurer — this is the opportunity window",
       },
     ],
+    opportunity_metrics: [
+      { metric: "expense_ratio", label: "Expense Ratio" },
+      { metric: "premium_growth_yoy", label: "Premium Growth" },
+    ],
   },
   {
     name: "Life",
@@ -112,6 +122,10 @@ export const SECTORS: SectorInfo[] = [
         tooltip: "Average book value per share — equity tied up per share",
       },
     ],
+    opportunity_metrics: [
+      { metric: "roe", label: "ROE" },
+      { metric: "net_premiums_earned", label: "Premiums" },
+    ],
   },
   {
     name: "Health",
@@ -158,6 +172,10 @@ export const SECTORS: SectorInfo[] = [
         aggregation: "avg",
         tooltip: "Average return on equity across managed care",
       },
+    ],
+    opportunity_metrics: [
+      { metric: "medical_loss_ratio", label: "MLR" },
+      { metric: "roe", label: "ROE" },
     ],
   },
   {

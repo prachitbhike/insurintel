@@ -56,7 +56,7 @@ export function SectorOpportunityCard({
   const accent = sectorAccent[sector];
 
   return (
-    <Link href={`/?sector=${getSectorSlug(sector)}`} scroll={false} className="group">
+    <Link href={`/sectors/${getSectorSlug(sector)}`} className="group">
       <Card
         className={cn(
           "border-l-[3px] shadow-sm transition-all duration-200 h-full",

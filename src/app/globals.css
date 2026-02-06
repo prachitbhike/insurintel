@@ -140,6 +140,9 @@
 }
 
 @layer base {
+  html {
+    font-size: 17.6px; /* ~10% bump from default 16px — scales all rem units */
+  }
   * {
     @apply border-border outline-ring/50;
   }
