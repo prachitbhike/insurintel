@@ -1,5 +1,12 @@
 import { type Sector } from "@/types/database";
 
+export interface HeroStat {
+  title: string;
+  metricName: string;
+  aggregation: "sum" | "avg" | "spread";
+  tooltip: string;
+}
+
 export interface SectorInfo {
   name: Sector;
   slug: string;
@@ -8,6 +15,7 @@ export interface SectorInfo {
   color: string;
   key_metrics: string[];
   ai_opportunities: string[];
+  hero_stats: HeroStat[];
 }
 
 export const SECTORS: SectorInfo[] = [
@@ -31,6 +39,32 @@ export const SECTORS: SectorInfo[] = [
       "Computer vision for property damage assessment eliminates field adjuster visits",
       "Telematics and IoT data enable real-time risk pricing that incumbents are slow to adopt",
     ],
+    hero_stats: [
+      {
+        title: "Sector Premiums",
+        metricName: "net_premiums_earned",
+        aggregation: "sum",
+        tooltip: "Total net premiums earned across P&C insurers",
+      },
+      {
+        title: "Avg Combined Ratio",
+        metricName: "combined_ratio",
+        aggregation: "avg",
+        tooltip: "Average combined ratio — below 100% means underwriting profit",
+      },
+      {
+        title: "Avg Expense Ratio",
+        metricName: "expense_ratio",
+        aggregation: "avg",
+        tooltip: "Average expense ratio — the piece most vulnerable to automation",
+      },
+      {
+        title: "Best-to-Worst Spread",
+        metricName: "expense_ratio",
+        aggregation: "spread",
+        tooltip: "Gap between the most and least efficient insurer — this is the opportunity window",
+      },
+    ],
   },
   {
     name: "Life",
@@ -51,6 +85,32 @@ export const SECTORS: SectorInfo[] = [
       "AI-powered financial planning tools increase annuity and retirement product cross-sell",
       "NLP-driven policy servicing automates beneficiary changes, loans, and surrender processing",
       "Fraud detection models for life claims reduce investigation costs and payout leakage",
+    ],
+    hero_stats: [
+      {
+        title: "Total Assets",
+        metricName: "total_assets",
+        aggregation: "sum",
+        tooltip: "Combined assets under management across Life insurers",
+      },
+      {
+        title: "Avg ROE",
+        metricName: "roe",
+        aggregation: "avg",
+        tooltip: "Average return on equity — how efficiently capital generates profit",
+      },
+      {
+        title: "Total Net Income",
+        metricName: "net_income",
+        aggregation: "sum",
+        tooltip: "Combined profit pool across Life insurers",
+      },
+      {
+        title: "Avg Book Value/Share",
+        metricName: "book_value_per_share",
+        aggregation: "avg",
+        tooltip: "Average book value per share — equity tied up per share",
+      },
     ],
   },
   {
@@ -73,6 +133,32 @@ export const SECTORS: SectorInfo[] = [
       "AI-assisted claims adjudication can process routine medical claims in seconds vs. days",
       "NLP extraction from clinical notes improves risk adjustment coding accuracy and revenue capture",
     ],
+    hero_stats: [
+      {
+        title: "Sector Revenue",
+        metricName: "revenue",
+        aggregation: "sum",
+        tooltip: "Total revenue across Health insurers",
+      },
+      {
+        title: "Avg Medical Loss Ratio",
+        metricName: "medical_loss_ratio",
+        aggregation: "avg",
+        tooltip: "ACA requires 80-85% MLR floor — admin margin is what's left",
+      },
+      {
+        title: "Total Net Income",
+        metricName: "net_income",
+        aggregation: "sum",
+        tooltip: "Combined profit pool across Health insurers",
+      },
+      {
+        title: "Avg ROE",
+        metricName: "roe",
+        aggregation: "avg",
+        tooltip: "Average return on equity across managed care",
+      },
+    ],
   },
   {
     name: "Reinsurance",
@@ -94,6 +180,32 @@ export const SECTORS: SectorInfo[] = [
       "Real-time portfolio monitoring using satellite and IoT data enables dynamic exposure management",
       "AI-driven claims reserving models reduce reserve volatility and improve capital efficiency",
     ],
+    hero_stats: [
+      {
+        title: "Sector Premiums",
+        metricName: "net_premiums_earned",
+        aggregation: "sum",
+        tooltip: "Total net premiums earned across reinsurers",
+      },
+      {
+        title: "Avg Combined Ratio",
+        metricName: "combined_ratio",
+        aggregation: "avg",
+        tooltip: "Average combined ratio — underwriting discipline benchmark",
+      },
+      {
+        title: "Avg Loss Ratio",
+        metricName: "loss_ratio",
+        aggregation: "avg",
+        tooltip: "Average loss ratio — quality of risk selection",
+      },
+      {
+        title: "Avg ROE",
+        metricName: "roe",
+        aggregation: "avg",
+        tooltip: "Average return on equity — capital efficiency",
+      },
+    ],
   },
   {
     name: "Brokers",
@@ -108,6 +220,32 @@ export const SECTORS: SectorInfo[] = [
       "Automated renewal processing and policy checking reduces E&O risk and back-office headcount",
       "Predictive cross-sell models identify coverage gaps across client portfolios",
       "Digital-first distribution platforms can undercut broker commissions on small commercial lines",
+    ],
+    hero_stats: [
+      {
+        title: "Sector Revenue",
+        metricName: "revenue",
+        aggregation: "sum",
+        tooltip: "Total revenue (commissions + fees) across brokers",
+      },
+      {
+        title: "Avg ROE",
+        metricName: "roe",
+        aggregation: "avg",
+        tooltip: "Average return on equity across brokers",
+      },
+      {
+        title: "Total Net Income",
+        metricName: "net_income",
+        aggregation: "sum",
+        tooltip: "Combined profit pool across brokers",
+      },
+      {
+        title: "Avg Debt-to-Equity",
+        metricName: "debt_to_equity",
+        aggregation: "avg",
+        tooltip: "Average leverage ratio — acquisition-fueled debt",
+      },
     ],
   },
 ];

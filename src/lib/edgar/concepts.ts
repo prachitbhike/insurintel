@@ -12,7 +12,6 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "PremiumsEarnedNet",
       "NetPremiumsEarned",
       "PremiumsEarned",
-      // NetPremiumsWritten removed: written ≠ earned (timing difference)
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -23,8 +22,7 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "PolicyholderBenefitsAndClaimsIncurredNet",
       "IncurredClaimsPropertyCasualtyAndLiability",
       "LossesAndLossAdjustmentExpense",
-      // PolicyholderBenefitsAndClaimsIncurredGross removed: gross vs net mismatch
-      // BenefitsLossesAndExpenses removed: includes ALL expenses, not just losses
+      "LiabilityForUnpaidClaimsAndClaimsAdjustmentExpenseIncurredClaims1", // MKL 2024+ replacement
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -58,7 +56,6 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
     metric_name: "total_liabilities",
     aliases: [
       "Liabilities",
-      // LiabilitiesAndStockholdersEquity removed: equals total assets (L+E), not liabilities
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -77,11 +74,17 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
     aliases: [
       "CommonStockSharesOutstanding",
       "WeightedAverageNumberOfShareOutstandingBasicAndDiluted",
-      // EntityCommonStockSharesOutstanding removed: dei taxonomy, never matches us-gaap lookup
-      // WeightedAverageNumberOfDilutedSharesOutstanding removed: diluted avg wrong for BVPS
+      "WeightedAverageNumberOfSharesOutstandingBasic", // PRU, PGR, HIG, CINF, etc.
     ],
     unit_key: "shares",
     taxonomy: "us-gaap",
+  },
+  {
+    // DEI taxonomy fallback for shares — covers companies that only report via dei
+    metric_name: "shares_outstanding",
+    aliases: ["EntityCommonStockSharesOutstanding"],
+    unit_key: "shares",
+    taxonomy: "dei",
   },
   {
     metric_name: "investment_income",
@@ -100,6 +103,11 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "LongTermDebtAndCapitalLeaseObligations",
       "LongTermDebtNoncurrent",
       "DebtInstrumentCarryingAmount",
+      "DebtLongtermAndShorttermCombinedAmount", // TRV, PGR, ALL, AIG, CNA
+      "DebtAndCapitalLeaseObligations", // ORI, MET, MKL, CVS, AFL
+      "SeniorLongTermNotes", // ACGL
+      "UnsecuredDebt", // AIZ
+      "JuniorSubordinatedNotes", // WRB
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -110,7 +118,6 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "Revenues",
       "RevenueFromContractWithCustomerExcludingAssessedTax",
       "HealthCareOrganizationRevenue",
-      // PremiumsEarnedNet removed: overlaps with net_premiums_earned
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -122,7 +129,7 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "BenefitExpenseHealthCareOrganizations",
       "PolicyholderBenefitsAndClaimsIncurredNet",
       "HealthCareCostsBenefitExpense",
-      // BenefitsAndExpenses removed: includes ALL expenses
+      "LiabilityForUnpaidClaimsAndClaimsAdjustmentExpenseIncurredClaims1", // MOH 2019+
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -143,7 +150,6 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "UnderwritingExpenses",
       "OtherUnderwritingExpense",
       "GeneralAndAdministrativeExpense",
-      // OperatingExpenses removed: includes all operating costs, 2-5x actual UW expense
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",

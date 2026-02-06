@@ -9,45 +9,34 @@ export function parseCompanyFacts(facts: CompanyFacts): ParsedMetric[] {
     const taxonomyFacts = facts.facts[concept.taxonomy];
     if (!taxonomyFacts) continue;
 
-    let units: XbrlUnit[] | undefined;
-
+    // Merge entries from ALL matching aliases instead of first-match-wins.
+    // Earlier aliases win for overlapping periods (preferred tag), but
+    // later aliases fill gaps from XBRL tag transitions.
+    const merged = new Map<string, XbrlUnit>();
     for (const alias of concept.aliases) {
       const conceptData = taxonomyFacts[alias];
       if (!conceptData) continue;
 
-      // Try the expected unit key first, then fall back to any available
-      units =
+      const candidateUnits =
         conceptData.units[concept.unit_key] ??
         Object.values(conceptData.units)[0];
 
-      if (units && units.length > 0) break;
+      if (!candidateUnits || candidateUnits.length === 0) continue;
+
+      for (const u of candidateUnits) {
+        if (u.form !== "10-K" && u.form !== "10-Q") continue;
+        const key = `${u.form}|${u.start ?? ""}|${u.end}`;
+        const existing = merged.get(key);
+        // Add if new period, or replace if strictly later filing.
+        // For same filing date across aliases, first alias wins (preferred).
+        if (!existing || u.filed > existing.filed) {
+          merged.set(key, u);
+        }
+      }
     }
 
-    if (!units || units.length === 0) continue;
-
-    // Filter to 10-K (annual) and 10-Q (quarterly) filings
-    const annualEntries = units.filter(
-      (u) => u.form === "10-K" && u.start != null
-    );
-    const quarterlyEntries = units.filter(
-      (u) => u.form === "10-Q" && u.start != null
-    );
-
-    // Also include point-in-time (balance sheet) items from 10-K/10-Q
-    const annualPointInTime = units.filter(
-      (u) => u.form === "10-K" && u.start == null
-    );
-    const quarterlyPointInTime = units.filter(
-      (u) => u.form === "10-Q" && u.start == null
-    );
-
-    // Deduplicate: prefer latest filed date per (fy, fp)
-    const deduped = deduplicateEntries([
-      ...annualEntries,
-      ...annualPointInTime,
-      ...quarterlyEntries,
-      ...quarterlyPointInTime,
-    ]);
+    const deduped = Array.from(merged.values());
+    if (deduped.length === 0) continue;
 
     for (const entry of deduped) {
       // Use end date year as the actual fiscal year (not entry.fy which
@@ -73,21 +62,6 @@ export function parseCompanyFacts(facts: CompanyFacts): ParsedMetric[] {
   }
 
   return metrics;
-}
-
-function deduplicateEntries(entries: XbrlUnit[]): XbrlUnit[] {
-  const map = new Map<string, XbrlUnit>();
-
-  for (const entry of entries) {
-    const key = `${entry.form}|${entry.start ?? ""}|${entry.end}`;
-    const existing = map.get(key);
-
-    if (!existing || entry.filed >= existing.filed) {
-      map.set(key, entry);
-    }
-  }
-
-  return Array.from(map.values());
 }
 
 function parseFiscalQuarter(fp: string): number | null {

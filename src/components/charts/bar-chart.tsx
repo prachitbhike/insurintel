@@ -11,6 +11,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 
@@ -22,6 +24,7 @@ interface BarChartProps {
   height?: number;
   layout?: "horizontal" | "vertical";
   stacked?: boolean;
+  showLegend?: boolean;
 }
 
 export function BarChartComponent({
@@ -32,6 +35,7 @@ export function BarChartComponent({
   height = 300,
   layout = "horizontal",
   stacked = false,
+  showLegend = true,
 }: BarChartProps) {
   const isVertical = layout === "vertical";
 
@@ -40,12 +44,23 @@ export function BarChartComponent({
       <RechartsBarChart
         data={data}
         layout={isVertical ? "vertical" : "horizontal"}
-        margin={{ top: 10, right: 10, left: isVertical ? 80 : 0, bottom: 0 }}
+        margin={{ top: 8, right: 16, left: isVertical ? 80 : -4, bottom: 0 }}
       >
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <CartesianGrid
+          horizontal={!isVertical}
+          vertical={isVertical}
+          strokeDasharray="3 3"
+          className="stroke-border/50"
+        />
         {isVertical ? (
           <>
-            <XAxis type="number" tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" />
+            <XAxis
+              type="number"
+              tickLine={false}
+              axisLine={false}
+              className="text-xs fill-muted-foreground"
+              tickMargin={8}
+            />
             <YAxis
               type="category"
               dataKey={xKey}
@@ -57,17 +72,31 @@ export function BarChartComponent({
           </>
         ) : (
           <>
-            <XAxis dataKey={xKey} tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" />
-            <YAxis tickLine={false} axisLine={false} className="text-xs fill-muted-foreground" width={60} />
+            <XAxis
+              dataKey={xKey}
+              tickLine={false}
+              axisLine={false}
+              className="text-xs fill-muted-foreground"
+              tickMargin={10}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              className="text-xs fill-muted-foreground"
+              width={54}
+            />
           </>
         )}
         <ChartTooltip content={<ChartTooltipContent />} />
+        {showLegend && dataKeys.length > 1 && (
+          <ChartLegend content={<ChartLegendContent />} />
+        )}
         {dataKeys.map((key) => (
           <Bar
             key={key}
             dataKey={key}
             fill={`var(--color-${key})`}
-            radius={[4, 4, 0, 0]}
+            radius={isVertical ? [0, 6, 6, 0] : [6, 6, 0, 0]}
             stackId={stacked ? "stack" : undefined}
           />
         ))}

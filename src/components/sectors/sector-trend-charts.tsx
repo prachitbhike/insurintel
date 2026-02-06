@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Line,
-  LineChart,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
+  ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts";
@@ -23,24 +25,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
-
-const LINE_COLORS = [
-  "oklch(0.55 0.15 250)",
-  "oklch(0.55 0.17 155)",
-  "oklch(0.65 0.15 45)",
-  "oklch(0.55 0.2 280)",
-  "oklch(0.6 0.15 340)",
-  "oklch(0.6 0.14 200)",
-  "oklch(0.65 0.18 100)",
-  "oklch(0.55 0.15 15)",
-  "oklch(0.6 0.12 310)",
-  "oklch(0.65 0.1 180)",
-  "oklch(0.5 0.18 260)",
-  "oklch(0.6 0.16 70)",
-  "oklch(0.55 0.14 130)",
-  "oklch(0.6 0.2 350)",
-  "oklch(0.65 0.12 230)",
-];
+import { formatMetricValue } from "@/lib/metrics/formatters";
 
 export interface SectorTrendData {
   [metricName: string]: { year: number; [ticker: string]: number | null }[];
@@ -61,22 +46,58 @@ export function SectorTrendCharts({
     availableMetrics[0] ?? "roe"
   );
 
-  const data = trendData[selectedMetric] ?? [];
+  const timeseriesData = trendData[selectedMetric] ?? [];
+  const def = METRIC_DEFINITIONS[selectedMetric];
+  const higherIsBetter = def?.higher_is_better ?? true;
 
-  const config: ChartConfig = Object.fromEntries(
-    tickers.map((ticker, i) => [
-      ticker,
-      {
-        label: ticker,
-        color: LINE_COLORS[i % LINE_COLORS.length],
-      },
-    ])
-  );
+  // Extract the latest year's value per ticker, sort best-to-worst
+  const { barData, sectorAvg } = useMemo(() => {
+    if (timeseriesData.length === 0) return { barData: [], sectorAvg: null };
+
+    const latestRow = timeseriesData[timeseriesData.length - 1];
+
+    const entries: { ticker: string; value: number }[] = [];
+    for (const t of tickers) {
+      const v = latestRow[t];
+      if (v != null) {
+        entries.push({ ticker: t, value: v as number });
+      }
+    }
+
+    // Sort: best first
+    entries.sort((a, b) =>
+      higherIsBetter ? b.value - a.value : a.value - b.value
+    );
+
+    const avg =
+      entries.length > 0
+        ? entries.reduce((s, e) => s + e.value, 0) / entries.length
+        : null;
+
+    return { barData: entries, sectorAvg: avg };
+  }, [timeseriesData, tickers, higherIsBetter]);
+
+  const config: ChartConfig = {
+    value: {
+      label: def?.label ?? selectedMetric.replace(/_/g, " "),
+      color: "var(--chart-1)",
+    },
+  };
+
+  const chartHeight = Math.max(280, barData.length * 36 + 40);
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Company Trends</CardTitle>
+        <div>
+          <CardTitle>Company Rankings</CardTitle>
+          {timeseriesData.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Latest year &middot; {barData.length} companies &middot; sorted{" "}
+              {higherIsBetter ? "highest" : "lowest"} first
+            </p>
+          )}
+        </div>
         <Select value={selectedMetric} onValueChange={setSelectedMetric}>
           <SelectTrigger className="w-48">
             <SelectValue />
@@ -91,36 +112,81 @@ export function SectorTrendCharts({
         </Select>
       </CardHeader>
       <CardContent>
-        {data.length > 0 ? (
-          <ChartContainer config={config} className="w-full" style={{ height: 360 }}>
-            <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        {barData.length > 0 ? (
+          <ChartContainer
+            config={config}
+            className="w-full"
+            style={{ height: chartHeight }}
+          >
+            <BarChart
+              data={barData}
+              layout="vertical"
+              margin={{ top: 4, right: 40, left: 0, bottom: 4 }}
+            >
+              <CartesianGrid
+                horizontal={false}
+                strokeDasharray="3 3"
+                className="stroke-border/50"
+              />
               <XAxis
-                dataKey="year"
+                type="number"
                 tickLine={false}
                 axisLine={false}
                 className="text-xs fill-muted-foreground"
+                tickFormatter={(v: number) =>
+                  formatMetricValue(selectedMetric, v)
+                }
               />
               <YAxis
+                type="category"
+                dataKey="ticker"
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
-                width={60}
+                className="text-xs fill-muted-foreground font-mono"
+                width={52}
               />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              {tickers.map((ticker) => (
-                <Line
-                  key={ticker}
-                  type="monotone"
-                  dataKey={ticker}
-                  stroke={`var(--color-${ticker})`}
-                  strokeWidth={2}
-                  dot={{ r: 2.5 }}
-                  activeDot={{ r: 5 }}
-                  connectNulls
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value) =>
+                      formatMetricValue(selectedMetric, value as number)
+                    }
+                  />
+                }
+              />
+              {sectorAvg != null && (
+                <ReferenceLine
+                  x={sectorAvg}
+                  stroke="var(--muted-foreground)"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  label={{
+                    value: `Avg ${formatMetricValue(selectedMetric, sectorAvg)}`,
+                    position: "top",
+                    className: "text-[10px] fill-muted-foreground",
+                  }}
                 />
-              ))}
-            </LineChart>
+              )}
+              <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={28}>
+                {barData.map((entry, i) => {
+                  const isBest = i === 0;
+                  const isWorst = i === barData.length - 1 && barData.length > 1;
+                  return (
+                    <Cell
+                      key={entry.ticker}
+                      fill={
+                        isBest
+                          ? "var(--positive)"
+                          : isWorst
+                            ? "var(--negative)"
+                            : "var(--chart-1)"
+                      }
+                      fillOpacity={isBest || isWorst ? 0.85 : 0.6}
+                    />
+                  );
+                })}
+              </Bar>
+            </BarChart>
           </ChartContainer>
         ) : (
           <p className="text-sm text-muted-foreground py-8 text-center">

@@ -62,55 +62,71 @@ export async function GET(request: Request) {
             rawMetrics,
             first.fiscal_year,
             first.fiscal_quarter,
-            first.period_type
+            first.period_type,
+            company.sector
           );
           allMetrics.push(...derived);
         }
 
-        // Calculate YoY growth for annual data
+        // Deduplicate by unique key before computing YoY and upserting
+        const dedupMap = new Map<string, (typeof allMetrics)[0]>();
+        for (const metric of allMetrics) {
+          const key = `${metric.metric_name}|${metric.period_type}|${metric.fiscal_year}|${metric.fiscal_quarter}`;
+          const existing = dedupMap.get(key);
+          if (!existing || metric.filed_at >= existing.filed_at) {
+            dedupMap.set(key, metric);
+          }
+        }
+        const dedupedMetrics = [...dedupMap.values()];
+
+        // Calculate YoY growth AFTER dedup so we use the same values that get stored
         const annualYears = [
           ...new Set(
-            rawMetrics
-              .filter((m) => m.period_type === "annual")
+            dedupedMetrics
+              .filter((m) => m.period_type === "annual" && m.metric_name === "net_premiums_earned")
               .map((m) => m.fiscal_year)
           ),
         ].sort();
 
         for (let i = 1; i < annualYears.length; i++) {
-          const currentYear = rawMetrics.filter(
+          const currentYear = dedupedMetrics.filter(
             (m) =>
               m.fiscal_year === annualYears[i] && m.period_type === "annual"
           );
-          const priorYear = rawMetrics.filter(
+          const priorYear = dedupedMetrics.filter(
             (m) =>
               m.fiscal_year === annualYears[i - 1] &&
               m.period_type === "annual"
           );
           const growth = calculateYoyGrowth(currentYear, priorYear);
-          allMetrics.push(...growth);
+          dedupedMetrics.push(...growth);
         }
 
-        // Upsert metrics into database
-        for (const metric of allMetrics) {
+        // Upsert metrics in batches
+        const rows = dedupedMetrics.map((metric) => ({
+          company_id: company.id,
+          metric_name: metric.metric_name,
+          metric_value: metric.value,
+          unit: metric.unit,
+          period_type: metric.period_type,
+          fiscal_year: metric.fiscal_year,
+          fiscal_quarter: metric.fiscal_quarter,
+          period_start_date: metric.period_start_date || null,
+          period_end_date: metric.period_end_date || null,
+          is_derived: metric.accession_number === "derived",
+          source: metric.accession_number === "derived" ? "derived" : "edgar",
+          accession_number:
+            metric.accession_number === "derived"
+              ? null
+              : metric.accession_number,
+          filed_at: metric.filed_at,
+        }));
+
+        const UPSERT_BATCH = 500;
+        for (let b = 0; b < rows.length; b += UPSERT_BATCH) {
+          const batch = rows.slice(b, b + UPSERT_BATCH);
           const { error } = await supabase.from("financial_metrics").upsert(
-            {
-              company_id: company.id,
-              metric_name: metric.metric_name,
-              metric_value: metric.value,
-              unit: metric.unit,
-              period_type: metric.period_type,
-              fiscal_year: metric.fiscal_year,
-              fiscal_quarter: metric.fiscal_quarter,
-              period_start_date: metric.period_start_date,
-              period_end_date: metric.period_end_date,
-              is_derived: metric.accession_number === "derived",
-              source: metric.accession_number === "derived" ? "derived" : "edgar",
-              accession_number:
-                metric.accession_number === "derived"
-                  ? null
-                  : metric.accession_number,
-              filed_at: metric.filed_at,
-            },
+            batch,
             {
               onConflict:
                 "company_id,metric_name,period_type,fiscal_year,fiscal_quarter",
@@ -118,9 +134,9 @@ export async function GET(request: Request) {
           );
 
           if (error) {
-            errors.push(`${metric.metric_name}@${metric.fiscal_year}: ${error.message}`);
+            errors.push(`Batch error: ${error.message}`);
           } else {
-            metricsCount++;
+            metricsCount += batch.length;
           }
         }
 

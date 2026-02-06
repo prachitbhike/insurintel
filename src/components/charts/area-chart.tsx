@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import {
   Area,
   AreaChart as RechartsAreaChart,
@@ -11,6 +12,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 
@@ -22,6 +25,7 @@ interface AreaChartProps {
   height?: number;
   showGrid?: boolean;
   stacked?: boolean;
+  showLegend?: boolean;
 }
 
 export function AreaChartComponent({
@@ -32,34 +36,73 @@ export function AreaChartComponent({
   height = 300,
   showGrid = true,
   stacked = false,
+  showLegend = true,
 }: AreaChartProps) {
+  const chartId = useId().replace(/:/g, "");
+
   return (
     <ChartContainer config={config} className="w-full" style={{ height }}>
-      <RechartsAreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-        {showGrid && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
+      <RechartsAreaChart
+        data={data}
+        margin={{ top: 8, right: 16, left: -4, bottom: 0 }}
+      >
+        <defs>
+          {dataKeys.map((key) => (
+            <linearGradient
+              key={key}
+              id={`area-fill-${key}-${chartId}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="0%"
+                stopColor={`var(--color-${key})`}
+                stopOpacity={0.3}
+              />
+              <stop
+                offset="95%"
+                stopColor={`var(--color-${key})`}
+                stopOpacity={0.02}
+              />
+            </linearGradient>
+          ))}
+        </defs>
+        {showGrid && (
+          <CartesianGrid
+            vertical={false}
+            strokeDasharray="3 3"
+            className="stroke-border/50"
+          />
+        )}
         <XAxis
           dataKey={xKey}
           tickLine={false}
           axisLine={false}
           className="text-xs fill-muted-foreground"
+          tickMargin={10}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
           className="text-xs fill-muted-foreground"
-          width={60}
+          width={54}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
+        {showLegend && dataKeys.length > 1 && (
+          <ChartLegend content={<ChartLegendContent />} />
+        )}
         {dataKeys.map((key) => (
           <Area
             key={key}
             type="monotone"
             dataKey={key}
-            fill={`var(--color-${key})`}
+            fill={`url(#area-fill-${key}-${chartId})`}
             stroke={`var(--color-${key})`}
-            fillOpacity={0.15}
             strokeWidth={2}
             stackId={stacked ? "stack" : undefined}
+            connectNulls
           />
         ))}
       </RechartsAreaChart>

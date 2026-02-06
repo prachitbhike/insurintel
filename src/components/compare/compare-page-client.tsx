@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 import { CompanyPicker } from "./company-picker";
 import { ComparisonTable } from "./comparison-table";
 import { ComparisonChart } from "./comparison-chart";
@@ -19,15 +20,17 @@ const COMPARISON_METRICS = [
   "combined_ratio",
   "loss_ratio",
   "expense_ratio",
+  "medical_loss_ratio",
   "roe",
   "roa",
   "eps",
   "net_income",
   "net_premiums_earned",
+  "revenue",
   "total_assets",
   "book_value_per_share",
   "debt_to_equity",
-  "revenue",
+  "investment_income",
 ];
 
 export function ComparePageClient({
@@ -41,6 +44,7 @@ export function ComparePageClient({
   const [data, setData] = useState<ComparisonData | null>(initialData);
   const [chartMetric, setChartMetric] = useState("roe");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const updateUrl = useCallback(
     (tickers: string[]) => {
@@ -66,24 +70,29 @@ export function ComparePageClient({
   useEffect(() => {
     if (selected.length === 0) {
       setData(null);
+      setError(null);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
+    setError(null);
 
-    // Fetch comparison data via API
     const fetchData = async () => {
       try {
         const res = await fetch(
           `/api/compare?companies=${selected.join(",")}`
         );
-        if (res.ok && !cancelled) {
+        if (!res.ok) {
+          if (!cancelled) setError("Failed to load comparison data. Please try again.");
+          return;
+        }
+        if (!cancelled) {
           const json = await res.json();
           setData(json);
         }
       } catch {
-        // ignore
+        if (!cancelled) setError("Network error. Please check your connection and try again.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -108,10 +117,20 @@ export function ComparePageClient({
       />
 
       {loading && (
-        <p className="text-sm text-muted-foreground">Loading comparison data...</p>
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <p className="mt-2 text-sm text-muted-foreground">Loading comparison data...</p>
+        </div>
       )}
 
-      {data && data.companies.length > 0 && (
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && data && data.companies.length > 0 && (
         <>
           <ComparisonTable
             companies={data.companies}
@@ -132,7 +151,7 @@ export function ComparePageClient({
         </>
       )}
 
-      {!loading && selected.length === 0 && (
+      {!loading && !error && selected.length === 0 && (
         <div className="space-y-6">
           <div className="rounded-lg border border-dashed p-12 text-center">
             <p className="text-muted-foreground">

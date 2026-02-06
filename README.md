@@ -66,6 +66,27 @@ In production, two Vercel cron jobs keep data current:
 - **6:00 AM daily** — `/api/cron/ingest-facts` ingests data for 8 companies (full universe refreshes every ~5 days)
 - **7:00 AM daily** — `/api/cron/refresh-views` refreshes materialized views
 
+## EDGAR / XBRL Notes
+
+Understanding the data source is important for interpreting dashboard results:
+
+- **Fiscal year field is misleading** — EDGAR's `fy` field is the *filing* year, not the data's period year. A 10-K filed in 2024 may include CY2022 comparative data tagged as `fy=2024`. The parser uses the `end` date to determine the actual period year.
+- **XBRL tag aliases** — Each metric maps to multiple XBRL concept tags (e.g. `net_premiums_earned` tries `PremiumsEarnedNet`, `NetPremiumsEarned`, `PremiumsEarned`). Alias order is first-match-wins, so the most specific tag comes first.
+- **Derived metrics are sector-scoped** — Loss ratio, expense ratio, and combined ratio are only computed for P&C and Reinsurance. Medical loss ratio (MLR) is Health-only and uses `net_premiums_earned` as the denominator (not `revenue`) because companies like CI, CVS, and UNH have massive PBM/pharmacy revenue that would skew the ratio.
+- **Rate limiting** — SEC enforces a 10 requests/second limit. The app uses a token bucket rate limiter at 8 req/sec to stay safely under.
+
+### Known Data Quirks
+
+These are expected behaviors, not bugs:
+
+| Company | Observation | Reason |
+|---------|-------------|--------|
+| AIZ | Loss ratio ~28% | Heavy reinsurance ceding (net vs gross basis) |
+| BRK.B | Only ~7 metrics | Conglomerate XBRL doesn't map to insurance-specific tags |
+| ERIE | Missing underwriting metrics | Management company structure, not an underwriter |
+| AON, AJG | Missing `revenue` | XBRL concept tags don't match current aliases |
+| Various | Revenue < premiums | GAAP reporting difference, not an error |
+
 ## Project Structure
 
 ```

@@ -41,7 +41,7 @@ const COMPANIES_SEED = [
   { cik: "0001126328", ticker: "PFG", name: "Principal Financial Group", sector: "Life", sub_sector: "Retirement", sic_code: "6311" },
   { cik: "0001333986", ticker: "EQH", name: "Equitable Holdings", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000005513", ticker: "UNM", name: "Unum Group", sector: "Life", sub_sector: "Disability & Benefits", sic_code: "6311" },
-  { cik: "0000882184", ticker: "GL", name: "Globe Life", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
+  { cik: "0000320335", ticker: "GL", name: "Globe Life", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000059558", ticker: "LNC", name: "Lincoln National", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000731766", ticker: "UNH", name: "UnitedHealth Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
   { cik: "0001739940", ticker: "CI", name: "Cigna Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
@@ -64,17 +64,18 @@ const COMPANIES_SEED = [
 
 const XBRL_CONCEPTS = [
   { metric_name: "net_premiums_earned", aliases: ["PremiumsEarnedNet", "NetPremiumsEarned", "PremiumsEarned"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "losses_incurred", aliases: ["PolicyholderBenefitsAndClaimsIncurredNet", "IncurredClaimsPropertyCasualtyAndLiability", "LossesAndLossAdjustmentExpense"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "losses_incurred", aliases: ["PolicyholderBenefitsAndClaimsIncurredNet", "IncurredClaimsPropertyCasualtyAndLiability", "LossesAndLossAdjustmentExpense", "LiabilityForUnpaidClaimsAndClaimsAdjustmentExpenseIncurredClaims1"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "net_income", aliases: ["NetIncomeLoss", "ProfitLoss", "NetIncomeLossAvailableToCommonStockholdersBasic"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "stockholders_equity", aliases: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "total_assets", aliases: ["Assets"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "total_liabilities", aliases: ["Liabilities"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "eps", aliases: ["EarningsPerShareDiluted", "EarningsPerShareBasic"], unit_key: "USD/shares", taxonomy: "us-gaap" },
-  { metric_name: "shares_outstanding", aliases: ["CommonStockSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"], unit_key: "shares", taxonomy: "us-gaap" },
+  { metric_name: "shares_outstanding", aliases: ["CommonStockSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "WeightedAverageNumberOfSharesOutstandingBasic"], unit_key: "shares", taxonomy: "us-gaap" },
+  { metric_name: "shares_outstanding", aliases: ["EntityCommonStockSharesOutstanding"], unit_key: "shares", taxonomy: "dei" },
   { metric_name: "investment_income", aliases: ["NetInvestmentIncome", "InvestmentIncomeNet", "InvestmentIncomeInterestAndDividend"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "total_debt", aliases: ["LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebtNoncurrent", "DebtInstrumentCarryingAmount"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "total_debt", aliases: ["LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebtNoncurrent", "DebtInstrumentCarryingAmount", "DebtLongtermAndShorttermCombinedAmount", "DebtAndCapitalLeaseObligations", "SeniorLongTermNotes", "UnsecuredDebt", "JuniorSubordinatedNotes"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "revenue", aliases: ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "HealthCareOrganizationRevenue"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "medical_claims_expense", aliases: ["PolicyholderBenefitsAndClaimsIncurredHealthCare", "BenefitExpenseHealthCareOrganizations", "PolicyholderBenefitsAndClaimsIncurredNet", "HealthCareCostsBenefitExpense"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "medical_claims_expense", aliases: ["PolicyholderBenefitsAndClaimsIncurredHealthCare", "BenefitExpenseHealthCareOrganizations", "PolicyholderBenefitsAndClaimsIncurredNet", "HealthCareCostsBenefitExpense", "LiabilityForUnpaidClaimsAndClaimsAdjustmentExpenseIncurredClaims1"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "acquisition_costs", aliases: ["DeferredPolicyAcquisitionCostAmortizationExpense", "PolicyAcquisitionCosts", "AmortizationOfDeferredPolicyAcquisitionCosts"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "underwriting_expenses", aliases: ["UnderwritingExpenses", "OtherUnderwritingExpense", "GeneralAndAdministrativeExpense"], unit_key: "USD", taxonomy: "us-gaap" },
 ];
@@ -134,33 +135,40 @@ interface ParsedMetric {
 
 function parseFacts(facts: Record<string, unknown>): ParsedMetric[] {
   const metrics: ParsedMetric[] = [];
-  const usGaap = (facts as { facts?: { "us-gaap"?: Record<string, { units: Record<string, XbrlUnit[]> }> } }).facts?.["us-gaap"];
-  if (!usGaap) return metrics;
+  const factsObj = (facts as { facts?: Record<string, Record<string, { units: Record<string, XbrlUnit[]> }>> }).facts;
+  if (!factsObj) return metrics;
+
+  const minYear = new Date().getFullYear() - 5;
 
   for (const concept of XBRL_CONCEPTS) {
-    let units: XbrlUnit[] | undefined;
+    const taxonomy = factsObj[concept.taxonomy];
+    if (!taxonomy) continue;
 
-    for (const alias of concept.aliases) {
-      const data = usGaap[alias];
-      if (!data) continue;
-      units = data.units[concept.unit_key] ?? Object.values(data.units)[0];
-      if (units && units.length > 0) break;
-    }
-
-    if (!units || units.length === 0) continue;
-
-    const minYear = new Date().getFullYear() - 5;
-    const all = units.filter((u) => (u.form === "10-K" || u.form === "10-Q") && u.fy >= minYear);
-
-    // Dedup by actual period (using end date), prefer latest filing
+    // Merge entries from ALL matching aliases instead of first-match-wins.
+    // Earlier aliases win for overlapping periods (preferred tag), but
+    // later aliases fill gaps from XBRL tag transitions (e.g. MKL switched
+    // from IncurredClaimsP&C to LiabilityForUnpaid... in 2024)
     const deduped = new Map<string, XbrlUnit>();
-    for (const entry of all) {
-      const key = `${entry.form}|${entry.start ?? ""}|${entry.end}`;
-      const existing = deduped.get(key);
-      if (!existing || entry.filed >= existing.filed) {
-        deduped.set(key, entry);
+    for (const alias of concept.aliases) {
+      const data = taxonomy[alias];
+      if (!data) continue;
+      const candidateUnits = data.units[concept.unit_key] ?? Object.values(data.units)[0];
+      if (!candidateUnits || candidateUnits.length === 0) continue;
+
+      for (const u of candidateUnits) {
+        if (u.form !== "10-K" && u.form !== "10-Q") continue;
+        if (u.fy < minYear) continue;
+        const key = `${u.form}|${u.start ?? ""}|${u.end}`;
+        const existing = deduped.get(key);
+        // Add if new period, or replace if strictly later filing (re-filing).
+        // For same filing date across aliases, first alias wins (preferred).
+        if (!existing || u.filed > existing.filed) {
+          deduped.set(key, u);
+        }
       }
     }
+
+    if (deduped.size === 0) continue;
 
     for (const entry of deduped.values()) {
       // Use end date year as the actual fiscal year (not entry.fy which
@@ -317,13 +325,28 @@ async function main() {
         allMetrics.push(...derived);
       }
 
-      // YoY growth
-      const annualYears = [...new Set(rawMetrics.filter((m) => m.period_type === "annual").map((m) => m.fiscal_year))].sort();
+      // Deduplicate by unique key before upserting
+      const dedupMap = new Map<string, typeof allMetrics[0]>();
+      for (const metric of allMetrics) {
+        const key = `${metric.metric_name}|${metric.period_type}|${metric.fiscal_year}|${metric.fiscal_quarter}`;
+        const existing = dedupMap.get(key);
+        if (!existing || metric.filed_at >= existing.filed_at) {
+          dedupMap.set(key, metric);
+        }
+      }
+      const dedupedMetrics = [...dedupMap.values()];
+
+      // YoY growth — computed AFTER dedup so we use the same values that get stored
+      const annualYears = [...new Set(
+        dedupedMetrics
+          .filter((m) => m.period_type === "annual" && m.metric_name === "net_premiums_earned")
+          .map((m) => m.fiscal_year)
+      )].sort();
       for (let j = 1; j < annualYears.length; j++) {
-        const curr = rawMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j] && m.period_type === "annual");
-        const prev = rawMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j - 1] && m.period_type === "annual");
+        const curr = dedupedMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j] && m.period_type === "annual");
+        const prev = dedupedMetrics.find((m) => m.metric_name === "net_premiums_earned" && m.fiscal_year === annualYears[j - 1] && m.period_type === "annual");
         if (curr && prev && prev.value !== 0) {
-          allMetrics.push({
+          dedupedMetrics.push({
             metric_name: "premium_growth_yoy",
             value: ((curr.value - prev.value) / Math.abs(prev.value)) * 100,
             unit: "percent",
@@ -337,17 +360,6 @@ async function main() {
           });
         }
       }
-
-      // Deduplicate by unique key before upserting
-      const dedupMap = new Map<string, typeof allMetrics[0]>();
-      for (const metric of allMetrics) {
-        const key = `${metric.metric_name}|${metric.period_type}|${metric.fiscal_year}|${metric.fiscal_quarter}`;
-        const existing = dedupMap.get(key);
-        if (!existing || metric.filed_at >= existing.filed_at) {
-          dedupMap.set(key, metric);
-        }
-      }
-      const dedupedMetrics = [...dedupMap.values()];
 
       // Upsert in batches of 500
       let successCount = 0;

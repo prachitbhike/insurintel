@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Zap } from "lucide-react";
+import { Zap, Info } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSectorOverviews, getSectorAverages } from "@/lib/queries/sectors";
 import { getCompaniesBySector } from "@/lib/queries/companies";
@@ -16,12 +16,18 @@ import {
   type BenchmarkEntry,
 } from "@/components/dashboard/benchmark-strip";
 import { SectorToggle } from "@/components/dashboard/sector-toggle";
-import { KpiCard } from "@/components/dashboard/kpi-card";
 import { SectorTrendCharts, type SectorTrendData } from "@/components/sectors/sector-trend-charts";
 import { CompaniesTable } from "@/components/companies/companies-table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SECTORS, getSectorBySlug } from "@/lib/data/sectors";
 import { type CompanyListItem } from "@/types/company";
-import { type LatestMetric } from "@/types/database";
+import { type LatestMetric, type SectorAverage } from "@/types/database";
+import { formatMetricValue } from "@/lib/metrics/formatters";
 import {
   aggregateIndustryByYear,
   aggregateSectorByYear,
@@ -216,14 +222,23 @@ async function getOverviewData() {
   }
 }
 
+export interface ComputedHeroStat {
+  title: string;
+  metricName: string;
+  value: number | null;
+  tooltip: string;
+}
+
 async function getSectorDetailData(slug: string) {
   const sector = getSectorBySlug(slug);
   if (!sector) return null;
 
   let averages: Record<string, number> = {};
+  let sectorAvgRows: SectorAverage[] = [];
   let trendData: SectorTrendData = {};
   let tickers: string[] = [];
   let tableData: CompanyListItem[] = [];
+  let heroStats: ComputedHeroStat[] = [];
 
   try {
     const supabase = await createClient();
@@ -236,6 +251,7 @@ async function getSectorDetailData(slug: string) {
         .eq("sector", sector.name),
     ]);
 
+    sectorAvgRows = sectorAvgs;
     for (const avg of sectorAvgs) {
       averages[avg.metric_name] = avg.avg_value;
     }
@@ -286,6 +302,42 @@ async function getSectorDetailData(slug: string) {
       metricsByCompany.get(m.company_id)!.set(m.metric_name, m.metric_value);
     }
 
+    // Compute hero stats from config
+    heroStats = sector.hero_stats.map((hs) => {
+      let value: number | null = null;
+
+      if (hs.aggregation === "avg") {
+        const avgRow = sectorAvgRows.find((a) => a.metric_name === hs.metricName);
+        value = avgRow?.avg_value ?? null;
+      } else if (hs.aggregation === "sum") {
+        // Sum across unique companies (dedup by company_id, take latest)
+        const companyValues = new Map<string, number>();
+        for (const m of metrics) {
+          if (m.metric_name === hs.metricName) {
+            companyValues.set(m.company_id, m.metric_value);
+          }
+        }
+        if (companyValues.size > 0) {
+          value = 0;
+          for (const v of companyValues.values()) {
+            value += v;
+          }
+        }
+      } else if (hs.aggregation === "spread") {
+        const avgRow = sectorAvgRows.find((a) => a.metric_name === hs.metricName);
+        if (avgRow) {
+          value = avgRow.max_value - avgRow.min_value;
+        }
+      }
+
+      return {
+        title: hs.title,
+        metricName: hs.metricName,
+        value,
+        tooltip: hs.tooltip,
+      };
+    });
+
     tableData = companies.map((c) => {
       const cm = metricsByCompany.get(c.id);
       return {
@@ -306,7 +358,7 @@ async function getSectorDetailData(slug: string) {
     // Gracefully handle
   }
 
-  return { sector, averages, trendData, tickers, tableData };
+  return { sector, averages, trendData, tickers, tableData, heroStats };
 }
 
 interface HomePageProps {
@@ -352,6 +404,37 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 trackedCompanies={overviewData.totalCompanies}
                 totalAutomationTAM={overviewData.totalAutomationTAM}
               />
+            </div>
+          )}
+          {sectorDetail && sectorDetail.heroStats.length > 0 && (
+            <div className="mt-8">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {sectorDetail.heroStats.map((stat, i) => (
+                  <Card
+                    key={i}
+                    className="border-border/60 bg-card/80 backdrop-blur-sm shadow-sm"
+                  >
+                    <CardHeader className="flex flex-row items-center justify-between pb-1">
+                      <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        {stat.title}
+                      </CardTitle>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground/40 cursor-help shrink-0" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs">{stat.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold tracking-tight font-mono">
+                        {formatMetricValue(stat.metricName, stat.value)}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -444,19 +527,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </ul>
               </div>
             )}
-
-            {/* Sector KPI Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {sectorDetail.sector.key_metrics.map((metric) => (
-                <KpiCard
-                  key={metric}
-                  title={metric.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                  metricName={metric}
-                  value={sectorDetail.averages[metric] ?? null}
-                  tooltip={`Sector average for ${metric.replace(/_/g, " ")}`}
-                />
-              ))}
-            </div>
 
             {/* Trend Charts */}
             <SectorTrendCharts

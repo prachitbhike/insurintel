@@ -179,10 +179,15 @@ export default async function CompanyDetailPage({ params }: PageProps) {
     const sectorAvgMap = new Map(sectorAvgs.map((a) => [a.metric_name, a.avg_value]));
     const rankingMap = new Map(rankings.map((r) => [r.metric_name, r]));
 
-    const comparisonMetrics = [
-      "combined_ratio", "loss_ratio", "roe", "roa", "eps",
-      "net_premiums_earned", "net_income", "book_value_per_share",
-    ];
+    // Sector-aware peer comparison metrics
+    const sectorMetricMap: Record<string, string[]> = {
+      "P&C": ["combined_ratio", "loss_ratio", "expense_ratio", "roe", "roa", "eps", "net_premiums_earned", "net_income", "book_value_per_share"],
+      "Reinsurance": ["combined_ratio", "loss_ratio", "expense_ratio", "roe", "roa", "eps", "net_premiums_earned", "net_income", "book_value_per_share"],
+      "Health": ["medical_loss_ratio", "roe", "roa", "eps", "revenue", "net_income", "book_value_per_share", "debt_to_equity"],
+      "Life": ["roe", "roa", "eps", "net_premiums_earned", "net_income", "book_value_per_share", "investment_income", "debt_to_equity"],
+      "Brokers": ["roe", "roa", "eps", "revenue", "net_income", "book_value_per_share", "debt_to_equity"],
+    };
+    const comparisonMetrics = sectorMetricMap[company.sector] ?? ["roe", "roa", "eps", "net_income", "book_value_per_share"];
 
     peerComparisons = comparisonMetrics
       .filter((m) => metricsByName.has(m))

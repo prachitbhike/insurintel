@@ -11,6 +11,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 
@@ -21,6 +23,7 @@ interface LineChartProps {
   config: ChartConfig;
   height?: number;
   showGrid?: boolean;
+  showLegend?: boolean;
 }
 
 export function LineChartComponent({
@@ -30,33 +33,52 @@ export function LineChartComponent({
   config,
   height = 300,
   showGrid = true,
+  showLegend = true,
 }: LineChartProps) {
   return (
     <ChartContainer config={config} className="w-full" style={{ height }}>
-      <RechartsLineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-        {showGrid && <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />}
+      <RechartsLineChart
+        data={data}
+        margin={{ top: 8, right: 16, left: -4, bottom: 0 }}
+      >
+        {showGrid && (
+          <CartesianGrid
+            vertical={false}
+            strokeDasharray="3 3"
+            className="stroke-border/50"
+          />
+        )}
         <XAxis
           dataKey={xKey}
           tickLine={false}
           axisLine={false}
           className="text-xs fill-muted-foreground"
+          tickMargin={10}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
           className="text-xs fill-muted-foreground"
-          width={60}
+          width={54}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
+        {showLegend && dataKeys.length > 1 && (
+          <ChartLegend content={<ChartLegendContent />} />
+        )}
         {dataKeys.map((key) => (
           <Line
             key={key}
             type="monotone"
             dataKey={key}
             stroke={`var(--color-${key})`}
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
+            strokeWidth={2.5}
+            dot={{
+              r: 3.5,
+              strokeWidth: 2,
+              fill: "var(--color-background)",
+            }}
+            activeDot={{ r: 5, strokeWidth: 2 }}
+            connectNulls
           />
         ))}
       </RechartsLineChart>

@@ -14,11 +14,11 @@ import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
 import { type ChartConfig } from "@/components/ui/chart";
 
 const CHART_COLORS = [
-  "hsl(220, 70%, 50%)",
-  "hsl(160, 60%, 45%)",
-  "hsl(35, 80%, 55%)",
-  "hsl(280, 60%, 55%)",
-  "hsl(340, 65%, 50%)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 interface ComparisonChartProps {
@@ -37,6 +37,7 @@ export function ComparisonChart({
   onMetricChange,
 }: ComparisonChartProps) {
   const tsData = timeseries[selectedMetric] ?? [];
+  const def = METRIC_DEFINITIONS[selectedMetric];
 
   // Build chart data grouped by year
   const yearSet = new Set<number>();
@@ -62,20 +63,39 @@ export function ComparisonChart({
     };
   });
 
+  // Unit label for context
+  const unitLabel = def?.unit === "currency"
+    ? "USD"
+    : def?.unit === "percent"
+      ? "%"
+      : def?.unit === "ratio"
+        ? "x"
+        : "";
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Trend Comparison</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <div>
+          <CardTitle>Trend Comparison</CardTitle>
+          {def && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {def.label}{unitLabel ? ` (${unitLabel})` : ""}
+            </p>
+          )}
+        </div>
         <Select value={selectedMetric} onValueChange={onMetricChange}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-52">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {availableMetrics.map((m) => (
-              <SelectItem key={m} value={m}>
-                {METRIC_DEFINITIONS[m]?.label ?? m.replace(/_/g, " ")}
-              </SelectItem>
-            ))}
+            {availableMetrics.map((m) => {
+              const mDef = METRIC_DEFINITIONS[m];
+              return (
+                <SelectItem key={m} value={m}>
+                  {mDef?.label ?? m.replace(/_/g, " ")}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </CardHeader>
@@ -90,7 +110,7 @@ export function ComparisonChart({
           />
         ) : (
           <p className="text-sm text-muted-foreground py-8 text-center">
-            Select companies and a metric to see trend comparison.
+            No trend data available for this metric. Try selecting a different metric.
           </p>
         )}
       </CardContent>

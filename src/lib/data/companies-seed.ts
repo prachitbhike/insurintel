@@ -35,7 +35,7 @@ export const COMPANIES_SEED: CompanySeed[] = [
   { cik: "0001126328", ticker: "PFG", name: "Principal Financial Group", sector: "Life", sub_sector: "Retirement", sic_code: "6311" },
   { cik: "0001333986", ticker: "EQH", name: "Equitable Holdings", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000005513", ticker: "UNM", name: "Unum Group", sector: "Life", sub_sector: "Disability & Benefits", sic_code: "6311" },
-  { cik: "0000882184", ticker: "GL", name: "Globe Life", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
+  { cik: "0000320335", ticker: "GL", name: "Globe Life", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000059558", ticker: "LNC", name: "Lincoln National", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
 
   // Health (7)

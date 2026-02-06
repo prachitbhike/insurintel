@@ -45,10 +45,10 @@ const CHART_TABS = [
 ];
 
 const CHART_COLORS = [
-  "hsl(220, 70%, 50%)",
-  "hsl(160, 60%, 45%)",
-  "hsl(35, 80%, 55%)",
-  "hsl(280, 60%, 55%)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
 ];
 
 export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
