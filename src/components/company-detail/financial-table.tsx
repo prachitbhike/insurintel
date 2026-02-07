@@ -68,32 +68,30 @@ export function FinancialTable({
   return (
     <Accordion type="single" collapsible className="rounded-sm border bg-card text-card-foreground shadow-sm">
       <AccordionItem value="financial-data" className="border-b-0">
-        <AccordionTrigger className="px-4 hover:no-underline">
-          <div className="flex flex-1 items-center justify-between pr-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold tracking-tight">Historical Financials</span>
-              <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              <PeriodSelector value={periodType} onValueChange={setPeriodType} />
-            </div>
+        <div className="flex items-center justify-between px-4 pt-1">
+          <div className="flex items-center gap-2">
+            <ExportButtonGroup onCopy={handleCopy} onCSV={handleCSV} />
           </div>
+          <PeriodSelector value={periodType} onValueChange={setPeriodType} />
+        </div>
+        <AccordionTrigger className="px-4 pt-0 hover:no-underline">
+          <span className="text-sm font-semibold tracking-tight">Historical Financials</span>
         </AccordionTrigger>
         <AccordionContent className="px-6">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/80">
-                  <TableHead className="min-w-[180px] font-mono text-[10px] uppercase tracking-[0.15em]">Metric</TableHead>
+                  <TableHead className="min-w-[180px] font-mono text-[11px] uppercase tracking-[0.12em]">Metric</TableHead>
                   {displayYears.map((year) => (
-                    <TableHead key={year} className="text-right min-w-[100px] font-mono text-[10px] uppercase tracking-[0.15em]">
+                    <TableHead key={year} className="text-right min-w-[100px] font-mono text-[11px] uppercase tracking-[0.12em]">
                       {periodType === "annual" ? `FY${year}` : year}
                     </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((row) => {
+                {data.filter((row) => displayYears.some((y) => row.values[y] != null)).map((row) => {
                   const def = METRIC_DEFINITIONS[row.metric_name];
                   return (
                     <TableRow key={row.metric_name}>

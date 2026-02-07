@@ -12,6 +12,8 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "PremiumsEarnedNet",
       "NetPremiumsEarned",
       "PremiumsEarned",
+      "PremiumsEarnedNetPropertyAndCasualty", // PGR, AFG — P&C-specific tag
+      "SupplementaryInsuranceInformationPremiumRevenue", // AFG — SEC Schedule 12-16
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -110,6 +112,8 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "SeniorLongTermNotes", // ACGL
       "UnsecuredDebt", // AIZ
       "JuniorSubordinatedNotes", // WRB
+      "SeniorNotes", // EG
+      "SubordinatedDebt", // EG
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -120,6 +124,7 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "Revenues",
       "RevenueFromContractWithCustomerExcludingAssessedTax",
       "HealthCareOrganizationRevenue",
+      "RevenueFromContractWithCustomerIncludingAssessedTax", // MMC FY2021
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -142,6 +147,7 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "DeferredPolicyAcquisitionCostAmortizationExpense",
       "PolicyAcquisitionCosts",
       "AmortizationOfDeferredPolicyAcquisitionCosts",
+      "SupplementaryInsuranceInformationAmortizationOfDeferredPolicyAcquisitionCosts", // EG — SEC Schedule 12-16
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",
@@ -152,6 +158,8 @@ export const XBRL_CONCEPTS: XbrlConceptMapping[] = [
       "UnderwritingExpenses",
       "OtherUnderwritingExpense",
       "GeneralAndAdministrativeExpense",
+      "SellingGeneralAndAdministrativeExpense", // TRV, AIG, ALL, HIG, CINF, AFG
+      "SupplementaryInsuranceInformationOtherOperatingExpense", // RGA, CNA, ORI, AIZ, AFG — SEC Schedule 12-16
     ],
     unit_key: "USD",
     taxonomy: "us-gaap",

@@ -27,6 +27,7 @@ interface LineChartProps {
   showLegend?: boolean;
   yAxisTickFormatter?: (value: number) => string;
   tooltipFormatter?: (value: number, name: string) => ReactNode;
+  xAxisTickFormatter?: (value: string, index: number) => string;
 }
 
 export function LineChartComponent({
@@ -39,12 +40,13 @@ export function LineChartComponent({
   showLegend = true,
   yAxisTickFormatter,
   tooltipFormatter,
+  xAxisTickFormatter,
 }: LineChartProps) {
   return (
-    <ChartContainer config={config} className="w-full" style={{ height }}>
+    <ChartContainer config={config} className="w-full aspect-auto" style={{ height }}>
       <RechartsLineChart
         data={data}
-        margin={{ top: 8, right: 16, left: -4, bottom: 0 }}
+        margin={{ top: 8, right: 16, left: -4, bottom: 20 }}
       >
         {showGrid && (
           <CartesianGrid
@@ -57,13 +59,15 @@ export function LineChartComponent({
           dataKey={xKey}
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
-          tickMargin={10}
+          className="text-[11px] fill-muted-foreground"
+          tickMargin={8}
+          interval={0}
+          tickFormatter={xAxisTickFormatter as (value: string | number) => string}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           width={56}
           tickFormatter={yAxisTickFormatter as (value: string | number) => string}
         />

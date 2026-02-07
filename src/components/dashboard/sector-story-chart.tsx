@@ -35,7 +35,7 @@ interface SectorStoryChartProps {
 const chartConfig = {
   value: {
     label: "Value",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
 
@@ -57,16 +57,16 @@ export function SectorStoryChart({
 
   return (
     <Card className="rounded-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-display tracking-tight">{cfg.title}</CardTitle>
+      <CardHeader className="pb-1 pt-4">
+        <CardTitle className="text-base font-display tracking-tight">{cfg.title}</CardTitle>
         <CardDescription className="text-xs">{cfg.description}</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="w-full" style={{ height: Math.max(200, sorted.length * 32 + 40) }}>
+      <CardContent className="pb-3">
+        <ChartContainer config={chartConfig} className="w-full" style={{ height: Math.max(180, sorted.length * 26 + 36) }}>
           <BarChart
             data={sorted}
             layout="vertical"
-            margin={{ top: 8, right: 16, left: 80, bottom: 0 }}
+            margin={{ top: 8, right: 16, left: 4, bottom: 0 }}
           >
             <CartesianGrid
               horizontal={false}
@@ -78,7 +78,7 @@ export function SectorStoryChart({
               type="number"
               tickLine={false}
               axisLine={false}
-              className="text-[10px] fill-muted-foreground"
+              className="text-[11px] fill-muted-foreground"
               tickMargin={8}
               tickFormatter={(v: number) => formatMetricValue(cfg.metric, v)}
             />
@@ -98,7 +98,7 @@ export function SectorStoryChart({
                 label={{
                   value: `Avg ${formatMetricValue(cfg.metric, sectorAvg)}`,
                   position: "top",
-                  className: "text-[10px] fill-muted-foreground",
+                  className: "text-[11px] fill-muted-foreground",
                 }}
               />
             )}

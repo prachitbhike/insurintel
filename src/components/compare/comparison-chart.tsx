@@ -12,7 +12,7 @@ import {
 import { LineChartComponent } from "@/components/charts/line-chart";
 import { type MetricTimeseries } from "@/types/database";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
-import { formatMetricValue, formatChartTick, periodLabel, periodSortKey } from "@/lib/metrics/formatters";
+import { formatMetricValue, formatChartTick, periodLabel, periodSortKey, abbreviateQuarterlyLabel } from "@/lib/metrics/formatters";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { type ChartConfig } from "@/components/ui/chart";
 import { ExportButtonGroup } from "@/components/ui/export-button-group";
@@ -145,6 +145,7 @@ export function ComparisonChart({
             height={350}
             yAxisTickFormatter={tickFormatter}
             tooltipFormatter={tooltipFormatter}
+            xAxisTickFormatter={periodType === "quarterly" ? abbreviateQuarterlyLabel : undefined}
           />
         ) : (
           <p className="text-sm text-muted-foreground py-8 text-center">

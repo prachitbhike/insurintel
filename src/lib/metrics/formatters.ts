@@ -127,6 +127,23 @@ export function periodSortKey(fiscalYear: number, fiscalQuarter: number | null):
   return fiscalYear * 10 + (fiscalQuarter ?? 0);
 }
 
+/**
+ * Abbreviate quarterly x-axis labels to prevent overlap.
+ * "2021 Q1" → "Q1 '21", "2021 Q2" → "Q2", etc.
+ * First tick or any Q1 shows the year; Q2–Q4 show quarter only.
+ * Annual labels (plain year like "2021") pass through unchanged.
+ */
+export function abbreviateQuarterlyLabel(value: string, index: number): string {
+  const match = value.match(/^(\d{4})\s+Q(\d)$/);
+  if (!match) return value;
+  const year = match[1];
+  const quarter = match[2];
+  if (index === 0 || quarter === "1") {
+    return `Q${quarter} '${year.slice(2)}`;
+  }
+  return `Q${quarter}`;
+}
+
 export function formatChangePct(value: number | null | undefined): string {
   if (value == null) return "N/A";
   const sign = value >= 0 ? "+" : "";

@@ -113,7 +113,11 @@ export function PeerComparison({ comparisons }: PeerComparisonProps) {
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4">
-        {chartData.length > 0 && (
+        {chartData.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            Not enough peer data for comparison.
+          </p>
+        ) : (
           <ChartContainer
             config={config}
             className="w-full"

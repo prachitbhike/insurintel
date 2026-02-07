@@ -35,7 +35,7 @@ export function calculateDerivedMetrics(
   };
 
   // Loss Ratio, Expense Ratio, Combined Ratio — only for P&C and Reinsurance
-  const uwSectors = ["P&C", "Reinsurance"];
+  const uwSectors = ["P&C", "Reinsurance", "Mortgage Insurance"];
   if (!sector || uwSectors.includes(sector)) {
     if (lookup.losses_incurred != null && lookup.net_premiums_earned != null && lookup.net_premiums_earned !== 0) {
       derived.push({
@@ -71,7 +71,8 @@ export function calculateDerivedMetrics(
   }
 
   // ROE = Net Income / Stockholders' Equity
-  if (lookup.net_income != null && lookup.stockholders_equity != null && lookup.stockholders_equity !== 0) {
+  // Skip when equity <= 0 (negative equity from buybacks makes ratio meaningless, e.g. AON)
+  if (lookup.net_income != null && lookup.stockholders_equity != null && lookup.stockholders_equity > 0) {
     derived.push({
       ...base,
       metric_name: "roe",
@@ -91,7 +92,8 @@ export function calculateDerivedMetrics(
   }
 
   // Book Value Per Share = Equity / Shares Outstanding
-  if (lookup.stockholders_equity != null && lookup.shares_outstanding != null && lookup.shares_outstanding !== 0) {
+  // Skip when equity <= 0 or shares < 1M (Class A only count, e.g. WRB ~285K shares)
+  if (lookup.stockholders_equity != null && lookup.stockholders_equity > 0 && lookup.shares_outstanding != null && lookup.shares_outstanding >= 1_000_000) {
     derived.push({
       ...base,
       metric_name: "book_value_per_share",
@@ -101,12 +103,23 @@ export function calculateDerivedMetrics(
   }
 
   // Debt-to-Equity = Total Debt / Equity
-  if (lookup.total_debt != null && lookup.stockholders_equity != null && lookup.stockholders_equity !== 0) {
+  // Skip when equity <= 0 (negative equity makes D/E meaningless)
+  if (lookup.total_debt != null && lookup.stockholders_equity != null && lookup.stockholders_equity > 0) {
     derived.push({
       ...base,
       metric_name: "debt_to_equity",
       value: lookup.total_debt / lookup.stockholders_equity,
       unit: "ratio",
+    });
+  }
+
+  // Total Liabilities (derived from accounting identity when EDGAR tag missing)
+  if (lookup.total_liabilities == null && lookup.total_assets != null && lookup.stockholders_equity != null) {
+    derived.push({
+      ...base,
+      metric_name: "total_liabilities",
+      value: lookup.total_assets - lookup.stockholders_equity,
+      unit: "USD",
     });
   }
 
@@ -127,7 +140,7 @@ export function calculateDerivedMetrics(
   return derived;
 }
 
-const PREMIUM_GROWTH_SECTORS = ["P&C", "Reinsurance"];
+const PREMIUM_GROWTH_SECTORS = ["P&C", "Reinsurance", "Mortgage Insurance"];
 
 export function calculateYoyGrowth(
   currentYearMetrics: ParsedMetric[],

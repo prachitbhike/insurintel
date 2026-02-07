@@ -94,7 +94,7 @@ These are critical to understand when modifying the data pipeline:
 - **`fy` is the filing year, not the data year.** A 10-K filed in 2024 includes CY2022 comparatives tagged `fy=2024`. Always use the `end` date to determine the actual period year.
 - **XBRL alias order is first-match-wins.** Put the most specific/accurate tag first in `concepts.ts`. Alias ordering directly affects data correctness.
 - **Derived metrics are sector-scoped.** Loss/expense/combined ratio → P&C + Reinsurance only. MLR → Health only. Health MLR uses `net_premiums_earned` as denominator (not `revenue`) because CI/CVS/UNH have massive PBM/pharmacy revenue.
-- **Known data quirks (not bugs):** AIZ loss ratio ~28% (heavy reinsurance ceding), BRK.B only ~7 metrics (conglomerate XBRL), ERIE missing underwriting metrics (management company), AON/AJG missing `revenue` (alias gap), revenue < premiums for some insurers (GAAP reporting difference).
+- **Known data quirks (not bugs):** AIZ loss ratio ~28% (heavy reinsurance ceding), BRK.B only ~7 metrics (conglomerate XBRL), ERIE missing underwriting metrics (management company), RYAN missing EPS/shares (UP-C structure), revenue < premiums for some insurers (GAAP reporting difference).
 - **Do NOT nest `ResponsiveContainer`** inside chart wrappers — shadcn/ui `ChartContainer` already provides one. Nesting causes zero-dimension rendering.
 
 ## Conventions

@@ -2,12 +2,9 @@ import { type SectorInfo } from "@/lib/data/sectors";
 import { type Sector } from "@/types/database";
 import { HeroBenchmarksV2, type HeroMetric } from "./hero-benchmarks-v2";
 import { TopProspectsSection, type TopProspect } from "./top-prospects-section";
-import {
-  DisruptionTargetsTable,
-  type DisruptionTarget,
-} from "./disruption-targets-table";
-import { SectorHeroChart, type HeroChartData } from "./sector-hero-chart";
-import { SectorStoryChart } from "./sector-story-chart";
+import { SectorTrendCharts, type SectorTrendData } from "@/components/sectors/sector-trend-charts";
+import { PCMarketPulseDashboard } from "./pc-market-pulse/pc-market-pulse-dashboard";
+import { type PCDashboardData } from "@/lib/queries/pc-dashboard";
 import { cn } from "@/lib/utils";
 
 const SECTOR_TAGLINES: Record<Sector, string> = {
@@ -16,6 +13,8 @@ const SECTOR_TAGLINES: Record<Sector, string> = {
   Life: "Capital-intensive, long-duration liabilities. ROE separates leaders from laggards.",
   Reinsurance: "Underwriting discipline through the catastrophe cycle.",
   Brokers: "Fee engines built on M&A debt. Leverage vs. profitability.",
+  Title: "Transaction-driven revenue tied to housing market cycles. Efficiency is key.",
+  "Mortgage Insurance": "Credit risk underwriting in housing. Low loss ratios = disciplined selection.",
 };
 
 const SECTOR_ACCENT: Record<Sector, string> = {
@@ -24,27 +23,30 @@ const SECTOR_ACCENT: Record<Sector, string> = {
   Life: "border-t-emerald-500",
   Reinsurance: "border-t-amber-500",
   Brokers: "border-t-rose-500",
+  Title: "border-t-teal-500",
+  "Mortgage Insurance": "border-t-indigo-500",
 };
 
 interface SectorDashboardProps {
   sector: SectorInfo;
   heroMetrics: HeroMetric[];
   topProspects: TopProspect[];
-  disruptionTargets: DisruptionTarget[];
-  storyChartData: { ticker: string; value: number }[];
-  storyChartAvg: number | null;
-  heroChartData: HeroChartData;
+  sectorTrendData: SectorTrendData;
+  quarterlyTrendData: SectorTrendData;
+  sectorTickers: string[];
+  pcDashboardData?: PCDashboardData | null;
 }
 
 export function SectorDashboard({
   sector,
   heroMetrics,
   topProspects,
-  disruptionTargets,
-  storyChartData,
-  storyChartAvg,
-  heroChartData,
+  sectorTrendData,
+  quarterlyTrendData,
+  sectorTickers,
+  pcDashboardData,
 }: SectorDashboardProps) {
+  const isPCsector = sector.name === "P&C" && pcDashboardData != null;
   return (
     <div className="min-h-screen">
       {/* Sector Hero Banner + KPI Strip */}
@@ -54,10 +56,10 @@ export function SectorDashboard({
           SECTOR_ACCENT[sector.name]
         )}
       >
-        <div className="container px-4 pt-8 pb-6 md:px-6 md:pt-10 md:pb-8">
+        <div className="container px-4 pt-5 pb-4 md:px-6 md:pt-6 md:pb-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-xl">
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary/60 mb-2">
+              <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-primary/60 mb-2">
                 {sector.label} Sector
               </p>
               <h1 className="text-2xl font-display tracking-tight md:text-3xl">
@@ -72,7 +74,7 @@ export function SectorDashboard({
                 {SECTOR_TAGLINES[sector.name]}
               </p>
             </div>
-            <div className="lg:max-w-lg lg:min-w-[420px]">
+            <div className="lg:max-w-xl lg:min-w-[480px]">
               <HeroBenchmarksV2 heroMetrics={heroMetrics} />
             </div>
           </div>
@@ -81,29 +83,30 @@ export function SectorDashboard({
 
       {/* Main Content */}
       <div className="container px-4 md:px-6">
-        {/* Section 1: Hero Chart + Prospects Sidebar */}
-        <section className="py-8 border-b border-border/40 animate-fade-up delay-1">
-          <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-            {/* Left: Hero Chart */}
-            <div>
-              <SectorHeroChart chartData={heroChartData} />
+        {isPCsector ? (
+          <section className="py-5 animate-fade-up delay-1">
+            <PCMarketPulseDashboard dashboardData={pcDashboardData!} />
+          </section>
+        ) : (
+          <section className="py-5 animate-fade-up delay-1">
+            <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
+              {/* Left: Sector Analysis (3-tab) */}
+              <div>
+                <SectorTrendCharts
+                  trendData={sectorTrendData}
+                  quarterlyTrendData={quarterlyTrendData}
+                  availableMetrics={sector.key_metrics}
+                  tickers={sectorTickers}
+                  sector={sector.name}
+                />
+              </div>
+              {/* Right: Top Prospects */}
+              <div>
+                <TopProspectsSection prospects={topProspects} compact />
+              </div>
             </div>
-            {/* Right: Prospects + Story Chart */}
-            <div className="flex flex-col gap-4">
-              <TopProspectsSection prospects={topProspects} compact />
-              <SectorStoryChart
-                sectorName={sector.name}
-                data={storyChartData}
-                sectorAvg={storyChartAvg}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Section 2: Company Rankings */}
-        <section className="py-10 animate-fade-up delay-2">
-          <DisruptionTargetsTable targets={disruptionTargets} sector={sector.name} />
-        </section>
+          </section>
+        )}
       </div>
     </div>
   );

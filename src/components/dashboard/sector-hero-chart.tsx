@@ -53,16 +53,16 @@ export function SectorHeroChart({ chartData }: SectorHeroChartProps) {
   const meta = CHART_META[chartData.type];
 
   return (
-    <Card className="h-full rounded-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-display tracking-tight">
+    <Card className="rounded-sm">
+      <CardHeader className="pb-1 pt-4">
+        <CardTitle className="text-base font-display tracking-tight">
           {meta.title}
         </CardTitle>
         <CardDescription className="text-xs">
           {meta.description}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 pb-3">
         {chartData.type === "pc-breakeven" && (
           <PCBreakevenChart
             data={chartData.data}

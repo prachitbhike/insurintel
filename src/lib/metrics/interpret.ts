@@ -60,7 +60,7 @@ function interpretCombinedRatio(
 
   if (value > 105) {
     verdict = "critical";
-    plainEnglish = `Losing $${gap.toFixed(2)} per $100 of premiums`;
+    plainEnglish = `Underwriting loss of $${gap.toFixed(2)} per $100 of premiums`;
   } else if (value > 100) {
     verdict = "weak";
     plainEnglish = `Slight underwriting loss — $${gap.toFixed(2)} per $100`;
@@ -178,7 +178,7 @@ function interpretROE(
 
   if (value < 0) {
     verdict = "critical";
-    plainEnglish = "Negative return on equity — destroying capital";
+    plainEnglish = "Negative return on equity — may reflect write-downs, reserve charges, or capital restructuring";
   } else if (value < 5) {
     verdict = "weak";
     plainEnglish = "Minimal returns on shareholder capital";

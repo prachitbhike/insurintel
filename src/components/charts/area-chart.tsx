@@ -29,6 +29,7 @@ interface AreaChartProps {
   showLegend?: boolean;
   yAxisTickFormatter?: (value: number) => string;
   tooltipFormatter?: (value: number, name: string) => ReactNode;
+  xAxisTickFormatter?: (value: string, index: number) => string;
 }
 
 export function AreaChartComponent({
@@ -42,14 +43,15 @@ export function AreaChartComponent({
   showLegend = true,
   yAxisTickFormatter,
   tooltipFormatter,
+  xAxisTickFormatter,
 }: AreaChartProps) {
   const chartId = useId().replace(/:/g, "");
 
   return (
-    <ChartContainer config={config} className="w-full" style={{ height }}>
+    <ChartContainer config={config} className="w-full aspect-auto" style={{ height }}>
       <RechartsAreaChart
         data={data}
-        margin={{ top: 8, right: 16, left: -4, bottom: 0 }}
+        margin={{ top: 8, right: 16, left: -4, bottom: 20 }}
       >
         <defs>
           {dataKeys.map((key) => (
@@ -85,13 +87,15 @@ export function AreaChartComponent({
           dataKey={xKey}
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
-          tickMargin={10}
+          className="text-[11px] fill-muted-foreground"
+          tickMargin={8}
+          interval={0}
+          tickFormatter={xAxisTickFormatter as (value: string | number) => string}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           width={56}
           tickFormatter={yAxisTickFormatter as (value: string | number) => string}
         />

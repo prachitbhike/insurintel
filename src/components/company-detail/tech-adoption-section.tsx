@@ -11,7 +11,20 @@ interface TechAdoptionSectionProps {
 }
 
 export function TechAdoptionSection({ signals }: TechAdoptionSectionProps) {
-  if (signals.length === 0) return null;
+  if (signals.length === 0) {
+    return (
+      <Card className="rounded-sm terminal-surface">
+        <CardHeader>
+          <CardTitle className="text-sm">10-K Technology References</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No 10-K technology analysis available for this company.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const latest = signals[0];
 
@@ -48,10 +61,10 @@ export function TechAdoptionSection({ signals }: TechAdoptionSectionProps) {
   };
 
   return (
-    <Card>
+    <Card className="rounded-sm terminal-surface">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>10-K Technology References</CardTitle>
+          <CardTitle className="text-sm">10-K Technology References</CardTitle>
           <TechAdoptionBadge classification={latest.classification} />
         </div>
         <p className="text-xs text-muted-foreground">

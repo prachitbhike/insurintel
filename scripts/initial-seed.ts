@@ -19,6 +19,7 @@ import { createClient } from "@supabase/supabase-js";
 
 // Inline the constants to avoid path alias issues in tsx runner
 const COMPANIES_SEED = [
+  // P&C (24)
   { cik: "0000896159", ticker: "CB", name: "Chubb Limited", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0000080661", ticker: "PGR", name: "Progressive Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
   { cik: "0000086312", ticker: "TRV", name: "Travelers Companies", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
@@ -34,6 +35,16 @@ const COMPANIES_SEED = [
   { cik: "0001042046", ticker: "AFG", name: "American Financial Group", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
   { cik: "0000074260", ticker: "ORI", name: "Old Republic International", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
   { cik: "0001267238", ticker: "AIZ", name: "Assurant", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
+  { cik: "0001669162", ticker: "KNSL", name: "Kinsale Capital Group", sector: "P&C", sub_sector: "E&S Specialty", sic_code: "6331" },
+  { cik: "0000084246", ticker: "RLI", name: "RLI Corp", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
+  { cik: "0000230557", ticker: "SIGI", name: "Selective Insurance Group", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
+  { cik: "0001761312", ticker: "PLMR", name: "Palomar Holdings", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
+  { cik: "0000944695", ticker: "THG", name: "Hanover Insurance Group", sector: "P&C", sub_sector: "Commercial Lines", sic_code: "6331" },
+  { cik: "0000860748", ticker: "KMPR", name: "Kemper Corporation", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
+  { cik: "0000064996", ticker: "MCY", name: "Mercury General", sector: "P&C", sub_sector: "Personal Lines", sic_code: "6331" },
+  { cik: "0000776867", ticker: "WTM", name: "White Mountains Insurance Group", sector: "P&C", sub_sector: "Specialty", sic_code: "6331" },
+  { cik: "0001273813", ticker: "AGO", name: "Assured Guaranty", sector: "P&C", sub_sector: "Financial Guaranty", sic_code: "6351" },
+  // Life (15)
   { cik: "0001099219", ticker: "MET", name: "MetLife", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0001137774", ticker: "PRU", name: "Prudential Financial", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000004977", ticker: "AFL", name: "Aflac", sector: "Life", sub_sector: "Supplemental", sic_code: "6311" },
@@ -43,6 +54,13 @@ const COMPANIES_SEED = [
   { cik: "0000005513", ticker: "UNM", name: "Unum Group", sector: "Life", sub_sector: "Disability & Benefits", sic_code: "6311" },
   { cik: "0000320335", ticker: "GL", name: "Globe Life", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
   { cik: "0000059558", ticker: "LNC", name: "Lincoln National", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
+  { cik: "0001822993", ticker: "JXN", name: "Jackson Financial", sector: "Life", sub_sector: "Annuities", sic_code: "6311" },
+  { cik: "0001535929", ticker: "VOYA", name: "Voya Financial", sector: "Life", sub_sector: "Retirement", sic_code: "6311" },
+  { cik: "0001276520", ticker: "GNW", name: "Genworth Financial", sector: "Life", sub_sector: "LTC / Mortgage Insurance", sic_code: "6311" },
+  { cik: "0001224608", ticker: "CNO", name: "CNO Financial Group", sector: "Life", sub_sector: "Life & Health", sic_code: "6311" },
+  { cik: "0001475922", ticker: "PRI", name: "Primerica", sector: "Life", sub_sector: "Life Insurance", sic_code: "6311" },
+  { cik: "0001934850", ticker: "FG", name: "F&G Annuities & Life", sector: "Life", sub_sector: "Life & Annuities", sic_code: "6311" },
+  // Health (8)
   { cik: "0000731766", ticker: "UNH", name: "UnitedHealth Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
   { cik: "0001739940", ticker: "CI", name: "Cigna Group", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
   { cik: "0001156039", ticker: "ELV", name: "Elevance Health", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
@@ -50,20 +68,37 @@ const COMPANIES_SEED = [
   { cik: "0001071739", ticker: "CNC", name: "Centene Corporation", sector: "Health", sub_sector: "Medicaid", sic_code: "6324" },
   { cik: "0001179929", ticker: "MOH", name: "Molina Healthcare", sector: "Health", sub_sector: "Medicaid", sic_code: "6324" },
   { cik: "0000064803", ticker: "CVS", name: "CVS Health", sector: "Health", sub_sector: "Integrated Health", sic_code: "6324" },
+  { cik: "0001568651", ticker: "OSCR", name: "Oscar Health", sector: "Health", sub_sector: "Managed Care", sic_code: "6324" },
+  // Reinsurance (7)
   { cik: "0001067983", ticker: "BRK.B", name: "Berkshire Hathaway", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6331" },
   { cik: "0000913144", ticker: "RNR", name: "RenaissanceRe Holdings", sector: "Reinsurance", sub_sector: "Property Cat", sic_code: "6399" },
   { cik: "0001095073", ticker: "EG", name: "Everest Group", sector: "Reinsurance", sub_sector: "Diversified", sic_code: "6399" },
   { cik: "0000898174", ticker: "RGA", name: "Reinsurance Group of America", sector: "Reinsurance", sub_sector: "Life Reinsurance", sic_code: "6311" },
+  { cik: "0001576018", ticker: "SPNT", name: "SiriusPoint", sector: "Reinsurance", sub_sector: "Multi-line", sic_code: "6399" },
+  { cik: "0001593275", ticker: "HG", name: "Hamilton Insurance Group", sector: "Reinsurance", sub_sector: "Specialty", sic_code: "6399" },
+  { cik: "0001214816", ticker: "AXS", name: "AXIS Capital Holdings", sector: "Reinsurance", sub_sector: "Specialty", sic_code: "6399" },
+  // Brokers (8)
   { cik: "0000062709", ticker: "MMC", name: "Marsh & McLennan", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000315293", ticker: "AON", name: "Aon plc", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000354190", ticker: "AJG", name: "Arthur J. Gallagher", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0001140536", ticker: "WTW", name: "Willis Towers Watson", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0000079282", ticker: "BRO", name: "Brown & Brown", sector: "Brokers", sub_sector: "Brokerage", sic_code: "6411" },
   { cik: "0001849253", ticker: "RYAN", name: "Ryan Specialty Holdings", sector: "Brokers", sub_sector: "Specialty Brokerage", sic_code: "6411" },
+  { cik: "0001726978", ticker: "GSHD", name: "Goosehead Insurance", sector: "Brokers", sub_sector: "Distribution", sic_code: "6411" },
+  { cik: "0001781755", ticker: "BRP", name: "Baldwin Insurance Group", sector: "Brokers", sub_sector: "Distribution", sic_code: "6411" },
+  // Title (3)
+  { cik: "0001331875", ticker: "FNF", name: "Fidelity National Financial", sector: "Title", sub_sector: "Title Insurance", sic_code: "6361" },
+  { cik: "0001472787", ticker: "FAF", name: "First American Financial", sector: "Title", sub_sector: "Title Insurance", sic_code: "6361" },
+  { cik: "0000094344", ticker: "STC", name: "Stewart Information Services", sector: "Title", sub_sector: "Title Insurance", sic_code: "6361" },
+  // Mortgage Insurance (4)
+  { cik: "0000876437", ticker: "MTG", name: "MGIC Investment", sector: "Mortgage Insurance", sub_sector: "Mortgage Insurance", sic_code: "6351" },
+  { cik: "0000890926", ticker: "RDN", name: "Radian Group", sector: "Mortgage Insurance", sub_sector: "Mortgage Insurance", sic_code: "6351" },
+  { cik: "0001448893", ticker: "ESNT", name: "Essent Group", sector: "Mortgage Insurance", sub_sector: "Mortgage Insurance", sic_code: "6351" },
+  { cik: "0001547903", ticker: "NMIH", name: "NMI Holdings", sector: "Mortgage Insurance", sub_sector: "Mortgage Insurance", sic_code: "6351" },
 ];
 
 const XBRL_CONCEPTS = [
-  { metric_name: "net_premiums_earned", aliases: ["PremiumsEarnedNet", "NetPremiumsEarned", "PremiumsEarned"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "net_premiums_earned", aliases: ["PremiumsEarnedNet", "NetPremiumsEarned", "PremiumsEarned", "PremiumsEarnedNetPropertyAndCasualty", "SupplementaryInsuranceInformationPremiumRevenue"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "losses_incurred", aliases: ["PolicyholderBenefitsAndClaimsIncurredNet", "IncurredClaimsPropertyCasualtyAndLiability", "LossesAndLossAdjustmentExpense", "LiabilityForUnpaidClaimsAndClaimsAdjustmentExpenseIncurredClaims1"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "net_income", aliases: ["NetIncomeLoss", "ProfitLoss", "NetIncomeLossAvailableToCommonStockholdersBasic"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "stockholders_equity", aliases: ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"], unit_key: "USD", taxonomy: "us-gaap" },
@@ -73,11 +108,11 @@ const XBRL_CONCEPTS = [
   { metric_name: "shares_outstanding", aliases: ["EntityCommonStockSharesOutstanding"], unit_key: "shares", taxonomy: "dei" },
   { metric_name: "shares_outstanding", aliases: ["CommonStockSharesOutstanding", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted", "WeightedAverageNumberOfSharesOutstandingBasic"], unit_key: "shares", taxonomy: "us-gaap" },
   { metric_name: "investment_income", aliases: ["NetInvestmentIncome", "InvestmentIncomeNet", "InvestmentIncomeInterestAndDividend"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "total_debt", aliases: ["LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebtNoncurrent", "DebtInstrumentCarryingAmount", "DebtLongtermAndShorttermCombinedAmount", "DebtAndCapitalLeaseObligations", "SeniorLongTermNotes", "UnsecuredDebt", "JuniorSubordinatedNotes"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "revenue", aliases: ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "HealthCareOrganizationRevenue"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "total_debt", aliases: ["LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebtNoncurrent", "DebtInstrumentCarryingAmount", "DebtLongtermAndShorttermCombinedAmount", "DebtAndCapitalLeaseObligations", "SeniorLongTermNotes", "UnsecuredDebt", "JuniorSubordinatedNotes", "SeniorNotes", "SubordinatedDebt"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "revenue", aliases: ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "HealthCareOrganizationRevenue", "RevenueFromContractWithCustomerIncludingAssessedTax"], unit_key: "USD", taxonomy: "us-gaap" },
   { metric_name: "medical_claims_expense", aliases: ["PolicyholderBenefitsAndClaimsIncurredHealthCare", "BenefitExpenseHealthCareOrganizations", "PolicyholderBenefitsAndClaimsIncurredNet", "HealthCareCostsBenefitExpense", "LiabilityForUnpaidClaimsAndClaimsAdjustmentExpenseIncurredClaims1"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "acquisition_costs", aliases: ["DeferredPolicyAcquisitionCostAmortizationExpense", "PolicyAcquisitionCosts", "AmortizationOfDeferredPolicyAcquisitionCosts"], unit_key: "USD", taxonomy: "us-gaap" },
-  { metric_name: "underwriting_expenses", aliases: ["UnderwritingExpenses", "OtherUnderwritingExpense", "GeneralAndAdministrativeExpense"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "acquisition_costs", aliases: ["DeferredPolicyAcquisitionCostAmortizationExpense", "PolicyAcquisitionCosts", "AmortizationOfDeferredPolicyAcquisitionCosts", "SupplementaryInsuranceInformationAmortizationOfDeferredPolicyAcquisitionCosts"], unit_key: "USD", taxonomy: "us-gaap" },
+  { metric_name: "underwriting_expenses", aliases: ["UnderwritingExpenses", "OtherUnderwritingExpense", "GeneralAndAdministrativeExpense", "SellingGeneralAndAdministrativeExpense", "SupplementaryInsuranceInformationOtherOperatingExpense"], unit_key: "USD", taxonomy: "us-gaap" },
 ];
 
 // ------- Helpers -------
@@ -215,8 +250,8 @@ function computeDerived(raw: ParsedMetric[], fy: number, fq: number | null, pt: 
   const derived: ParsedMetric[] = [];
   const base = { period_type: pt, fiscal_year: fy, fiscal_quarter: fq, period_start_date: null, period_end_date: "", accession_number: "derived", filed_at: new Date().toISOString() } as const;
 
-  // Underwriting ratios — P&C and Reinsurance only
-  const uwSectors = ["P&C", "Reinsurance"];
+  // Underwriting ratios — P&C, Reinsurance, and Mortgage Insurance
+  const uwSectors = ["P&C", "Reinsurance", "Mortgage Insurance"];
   if (!sector || uwSectors.includes(sector)) {
     if (lookup.losses_incurred != null && lookup.net_premiums_earned && lookup.net_premiums_earned !== 0) {
       derived.push({ ...base, metric_name: "loss_ratio", value: (lookup.losses_incurred / lookup.net_premiums_earned) * 100, unit: "percent" });
@@ -232,18 +267,23 @@ function computeDerived(raw: ParsedMetric[], fy: number, fq: number | null, pt: 
       derived.push({ ...base, metric_name: "combined_ratio", value: lr + er, unit: "percent" });
     }
   }
-  // Universal ratios
-  if (lookup.net_income != null && lookup.stockholders_equity && lookup.stockholders_equity !== 0) {
+  // Universal ratios — skip ROE/D-E when equity <= 0 (negative equity from buybacks distorts, e.g. AON)
+  if (lookup.net_income != null && lookup.stockholders_equity && lookup.stockholders_equity > 0) {
     derived.push({ ...base, metric_name: "roe", value: (lookup.net_income / lookup.stockholders_equity) * 100, unit: "percent" });
   }
   if (lookup.net_income != null && lookup.total_assets && lookup.total_assets !== 0) {
     derived.push({ ...base, metric_name: "roa", value: (lookup.net_income / lookup.total_assets) * 100, unit: "percent" });
   }
-  if (lookup.stockholders_equity != null && lookup.shares_outstanding && lookup.shares_outstanding !== 0) {
+  // BVPS: skip when equity <= 0 or shares < 1M (Class A only count, e.g. WRB ~285K shares)
+  if (lookup.stockholders_equity != null && lookup.stockholders_equity > 0 && lookup.shares_outstanding && lookup.shares_outstanding >= 1_000_000) {
     derived.push({ ...base, metric_name: "book_value_per_share", value: lookup.stockholders_equity / lookup.shares_outstanding, unit: "per_share" });
   }
-  if (lookup.total_debt != null && lookup.stockholders_equity && lookup.stockholders_equity !== 0) {
+  if (lookup.total_debt != null && lookup.stockholders_equity && lookup.stockholders_equity > 0) {
     derived.push({ ...base, metric_name: "debt_to_equity", value: lookup.total_debt / lookup.stockholders_equity, unit: "ratio" });
+  }
+  // Total Liabilities (derived from accounting identity when EDGAR tag missing)
+  if (lookup.total_liabilities == null && lookup.total_assets != null && lookup.stockholders_equity != null) {
+    derived.push({ ...base, metric_name: "total_liabilities", value: lookup.total_assets - lookup.stockholders_equity, unit: "USD" });
   }
   // Medical Loss Ratio — Health only, use premiums as denominator (not total revenue
   // which includes PBM/pharmacy for diversified health companies like CI, CVS, UNH)
@@ -343,7 +383,7 @@ async function main() {
 
       // YoY growth — computed AFTER dedup so we use the same values that get stored
       // Only for P&C and Reinsurance (underwriting sectors)
-      const premiumGrowthSectors = ["P&C", "Reinsurance"];
+      const premiumGrowthSectors = ["P&C", "Reinsurance", "Mortgage Insurance"];
       if (premiumGrowthSectors.includes(company.sector)) {
         const annualYears = [...new Set(
           dedupedMetrics

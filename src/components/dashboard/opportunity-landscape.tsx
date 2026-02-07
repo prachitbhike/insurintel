@@ -28,12 +28,12 @@ interface OpportunityLandscapeProps {
 }
 
 const chartConfig = {
-  x: { label: "X Axis", color: "hsl(var(--chart-1))" },
-  y: { label: "Y Axis", color: "hsl(var(--chart-2))" },
+  x: { label: "X Axis", color: "var(--chart-1)" },
+  y: { label: "Y Axis", color: "var(--chart-2)" },
 } satisfies ChartConfig;
 
 function getScoreColor(score: number | null): string {
-  if (score == null) return "hsl(var(--muted-foreground))";
+  if (score == null) return "var(--muted-foreground)";
   if (score >= 70) return "hsl(142 71% 45%)"; // emerald
   if (score >= 40) return "hsl(48 96% 53%)"; // yellow
   return "hsl(0 84% 60%)"; // red

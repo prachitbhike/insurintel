@@ -30,6 +30,11 @@ const PAIN_METRICS: Record<Sector, { metric: string; invert: boolean }[]> = {
     { metric: "debt_to_equity", invert: false },
     { metric: "roe", invert: true },
   ],
+  Title: [{ metric: "roe", invert: true }], // ROE-focused like Life
+  "Mortgage Insurance": [
+    { metric: "combined_ratio", invert: false },
+    { metric: "roe", invert: true },
+  ],
 };
 
 function minMaxNormalize(

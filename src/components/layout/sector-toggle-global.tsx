@@ -10,6 +10,8 @@ const SECTOR_DOT_COLORS: Record<string, string> = {
   Health: "bg-violet-500",
   Reinsurance: "bg-amber-500",
   Brokers: "bg-rose-500",
+  Title: "bg-teal-500",
+  "Mortgage Insurance": "bg-indigo-500",
 };
 
 const SECTOR_SHORT_LABELS: Record<string, string> = {
@@ -18,6 +20,8 @@ const SECTOR_SHORT_LABELS: Record<string, string> = {
   Health: "Health",
   Reinsurance: "Re",
   Brokers: "Brokers",
+  Title: "Title",
+  "Mortgage Insurance": "MI",
 };
 
 export function SectorToggleGlobal({ className }: { className?: string }) {
@@ -35,7 +39,7 @@ export function SectorToggleGlobal({ className }: { className?: string }) {
           key={sector.slug}
           onClick={() => setSector(sector.slug)}
           className={cn(
-            "rounded-sm px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors whitespace-nowrap flex items-center gap-1",
+            "rounded-sm px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors whitespace-nowrap flex items-center gap-1",
             sectorSlug === sector.slug
               ? "bg-primary/10 text-primary border border-primary/20"
               : "text-muted-foreground hover:text-foreground border border-transparent"

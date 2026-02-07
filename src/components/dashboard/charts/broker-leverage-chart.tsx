@@ -73,7 +73,7 @@ export function BrokerLeverageChart({
           type="number"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           tickFormatter={(v: number) => `${v.toFixed(1)}x`}
         />
         <YAxis
@@ -81,7 +81,7 @@ export function BrokerLeverageChart({
           dataKey="ticker"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground font-mono"
+          className="text-[11px] fill-muted-foreground font-mono"
           width={48}
         />
         {avgDE != null && (
@@ -92,7 +92,7 @@ export function BrokerLeverageChart({
             label={{
               value: `Avg D/E ${avgDE.toFixed(1)}x`,
               position: "top",
-              className: "text-[10px] fill-rose-500",
+              className: "text-[11px] fill-rose-500",
             }}
           />
         )}
@@ -128,7 +128,7 @@ export function BrokerLeverageChart({
           <LabelList
             dataKey="debtToEquity"
             position="right"
-            className="fill-muted-foreground text-[10px] font-mono"
+            className="fill-muted-foreground text-[11px] font-mono"
             formatter={(v: number) => `${v.toFixed(1)}x`}
           />
         </Bar>

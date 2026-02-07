@@ -31,8 +31,8 @@ export default async function CompaniesPage({ searchParams }: PageProps) {
       getAllCompanies(supabase),
       supabase.from("mv_latest_metrics").select("*"),
       supabase
-        .from("mv_metric_timeseries")
-        .select("*")
+        .from("financial_metrics")
+        .select("company_id, metric_name, metric_value, fiscal_year")
         .eq("metric_name", "net_income")
         .eq("period_type", "annual")
         .order("fiscal_year", { ascending: true }),

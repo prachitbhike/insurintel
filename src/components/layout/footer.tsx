@@ -7,11 +7,11 @@ export function Footer() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-wider">
+          <span className="font-mono text-[11px] uppercase tracking-wider">
             Live &mdash; InsurIntel
           </span>
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground text-center md:text-right">
+        <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground text-center md:text-right">
           Data sourced from{" "}
           <a
             href="https://www.sec.gov/edgar/searchedgar/companysearch"

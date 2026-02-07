@@ -1,41 +1,35 @@
 import { createClient } from "@/lib/supabase/server";
-import { getBulkScoringData, getIndustryTimeseries } from "@/lib/queries/metrics";
+import { getBulkScoringData, getQuarterlyTimeseries } from "@/lib/queries/metrics";
 import { computeProspectScoresBatch } from "@/lib/scoring";
 import { computeBuyerSignals } from "@/lib/analysis/buyer-signals";
 import { generateFounderNarrative } from "@/lib/scoring/founder-narrative";
 import { interpretMetric, type InterpretContext } from "@/lib/metrics/interpret";
 import { type HeroMetric } from "@/components/dashboard/hero-benchmarks-v2";
 import { type TopProspect } from "@/components/dashboard/top-prospects-section";
-import {
-  type DisruptionTarget,
-} from "@/components/dashboard/disruption-targets-table";
-import { extractCompanyTimeseries } from "@/lib/metrics/aggregations";
-import { getSectorBySlug, type SectorInfo } from "@/lib/data/sectors";
+import { getSectorBySlug, SECTORS, type SectorInfo } from "@/lib/data/sectors";
 import { SectorDashboard } from "@/components/dashboard/sector-dashboard";
-import { getSectorStoryMetric } from "@/lib/data/sector-story-config";
-import { type HeroChartData } from "@/components/dashboard/sector-hero-chart";
 import { type Sector } from "@/types/database";
+import { type SectorTrendData } from "@/components/sectors/sector-trend-charts";
+import { type BulkScoringData } from "@/lib/scoring/types";
+import { buildPCDashboardFromBulk } from "@/lib/queries/pc-dashboard";
 
 export const revalidate = 3600;
-
-const SPARKLINE_EXTRA_METRICS = [
-  "combined_ratio",
-  "expense_ratio",
-  "premium_growth_yoy",
-  "roe",
-  "medical_loss_ratio",
-  "net_premiums_earned",
-];
 
 async function getOverviewData() {
   try {
     const supabase = await createClient();
+    const bulkScoringData = await getBulkScoringData(supabase);
 
-    const [bulkScoringData, industryTimeseries] =
-      await Promise.all([
-        getBulkScoringData(supabase),
-        getIndustryTimeseries(supabase, SPARKLINE_EXTRA_METRICS),
-      ]);
+    // Fetch quarterly timeseries for all companies and key metrics
+    const allCompanyIds = bulkScoringData.companies.map((c) => c.id);
+    const allKeyMetrics = [
+      ...new Set(SECTORS.flatMap((s) => s.key_metrics)),
+    ];
+    const quarterlyRows = await getQuarterlyTimeseries(
+      supabase,
+      allCompanyIds,
+      allKeyMetrics
+    );
 
     // Compute prospect scores
     const scores = computeProspectScoresBatch(bulkScoringData);
@@ -45,71 +39,18 @@ async function getOverviewData() {
     const buyerSignals = computeBuyerSignals(bulkScoringData, scores);
     const signalMap = new Map(buyerSignals.map((s) => [s.companyId, s]));
 
-    const allCompanies = bulkScoringData.companies;
-    const latestMetrics = bulkScoringData.latestMetrics;
-
-    // Build disruption targets from ALL companies with sector-appropriate metrics
-    const trendMetricForSector = (sector: string) => {
-      if (sector === "P&C" || sector === "Reinsurance") return "combined_ratio";
-      if (sector === "Health") return "medical_loss_ratio";
-      return "roe";
-    };
-
-    const bestExpenseRatio = allCompanies.reduce((best, c) => {
-      const er = latestMetrics[c.id]?.expense_ratio;
-      return er != null && (best == null || er < best) ? er : best;
-    }, null as number | null);
-
-    const disruptionTargets: DisruptionTarget[] = allCompanies
-      .map((c) => {
-        const metrics = latestMetrics[c.id] ?? {};
-        const expenseVal = metrics.expense_ratio ?? null;
-        const premiumVal = metrics.net_premiums_earned ?? null;
-        const roeVal = metrics.roe ?? null;
-        const trend = extractCompanyTimeseries(
-          industryTimeseries,
-          trendMetricForSector(c.sector),
-          c.id
-        );
-        const automationSavings =
-          expenseVal != null && premiumVal != null && bestExpenseRatio != null && expenseVal > bestExpenseRatio
-            ? ((expenseVal - bestExpenseRatio) / 100) * premiumVal
-            : null;
-
-        const score = scoreMap.get(c.id);
-        const signal = signalMap.get(c.id);
-
-        return {
-          companyId: c.id,
-          ticker: c.ticker,
-          name: c.name,
-          sector: c.sector,
-          combinedRatio: metrics.combined_ratio ?? null,
-          expenseRatio: expenseVal,
-          roe: roeVal,
-          automationSavings,
-          trend,
-          prospectScore: score?.totalScore ?? null,
-          signalTag: signal?.signalDescription ?? null,
-          mlr: metrics.medical_loss_ratio ?? null,
-          debtToEquity: metrics.debt_to_equity ?? null,
-          revenue: metrics.revenue ?? null,
-          netIncome: metrics.net_income ?? null,
-          totalAssets: metrics.total_assets ?? null,
-        };
-      });
-
     return {
-      disruptionTargets,
       bulkScoringData,
+      quarterlyRows,
       scores,
       scoreMap,
       signalMap,
     };
-  } catch {
+  } catch (error) {
+    console.error("[HomePage] Failed to load overview data:", error);
     return {
-      disruptionTargets: [],
       bulkScoringData: null,
+      quarterlyRows: [],
       scores: [],
       scoreMap: new Map(),
       signalMap: new Map(),
@@ -186,123 +127,98 @@ function buildSectorHeroMetrics(
   });
 }
 
-function buildHeroChartData(
-  sector: SectorInfo,
-  sectorCompanies: { id: string; ticker: string; name: string; sector: Sector }[],
-  latestMetrics: Record<string, Record<string, number>>,
-  scoreMap: Map<string, { totalScore: number | null }>,
-): HeroChartData {
-  const sectorName = sector.name;
+/**
+ * Builds SectorTrendData from bulkScoringData.timeseries (annual data from financial_metrics).
+ * This is reliable data already fetched by getBulkScoringData — no row limit issues.
+ */
+function buildSectorTrendData(
+  bulkScoringData: BulkScoringData,
+  sectorName: Sector,
+  metricNames: string[],
+): { trendData: SectorTrendData; tickers: string[] } {
+  const trendData: SectorTrendData = {};
 
-  if (sectorName === "P&C" || sectorName === "Reinsurance") {
-    // Combined ratio breakeven data (also used for Re radar fallback bars)
-    const items = sectorCompanies
-      .map((c) => ({
-        ticker: c.ticker,
-        name: c.name,
-        combinedRatio: latestMetrics[c.id]?.combined_ratio ?? null,
-        score: scoreMap.get(c.id)?.totalScore ?? null,
-      }))
-      .filter((d): d is typeof d & { combinedRatio: number } => d.combinedRatio != null)
-      .sort((a, b) => b.combinedRatio - a.combinedRatio);
+  // Get sector companies and build ticker lookup
+  const sectorCompanies = bulkScoringData.companies
+    .filter((c) => c.sector === sectorName)
+    .sort((a, b) => a.ticker.localeCompare(b.ticker));
+  const tickers = sectorCompanies.map((c) => c.ticker);
 
-    const avg =
-      items.length > 0
-        ? items.reduce((s, d) => s + d.combinedRatio, 0) / items.length
-        : null;
+  for (const metric of metricNames) {
+    // Collect all (year, ticker, value) tuples for this metric
+    const yearMap = new Map<number, Map<string, number>>();
 
-    if (sectorName === "Reinsurance") {
-      // Build radar data for reinsurance
-      const radarItems = sectorCompanies
-        .map((c) => {
-          const m = latestMetrics[c.id] ?? {};
-          return {
-            ticker: c.ticker,
-            name: c.name,
-            combinedRatio: m.combined_ratio ?? null,
-            lossRatio: m.loss_ratio ?? null,
-            expenseRatio: m.expense_ratio ?? null,
-            roe: m.roe ?? null,
-            premiumGrowth: m.premium_growth_yoy ?? null,
-          };
-        })
-        .filter((d) => d.combinedRatio != null || d.roe != null);
-
-      return {
-        type: "reinsurance-radar",
-        data: radarItems,
-      };
+    for (const company of sectorCompanies) {
+      const ts = bulkScoringData.timeseries[company.id]?.[metric];
+      if (!ts) continue;
+      for (const entry of ts) {
+        if (!yearMap.has(entry.fiscal_year)) yearMap.set(entry.fiscal_year, new Map());
+        yearMap.get(entry.fiscal_year)!.set(company.ticker, entry.value);
+      }
     }
 
-    return {
-      type: "pc-breakeven",
-      data: items,
-      sectorAvg: avg,
-    };
+    const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
+    if (years.length > 0) {
+      trendData[metric] = years.map((year) => {
+        const tickerVals = yearMap.get(year)!;
+        const entry: Record<string, string | number | null> = { period: String(year) };
+        for (const t of tickers) entry[t] = tickerVals.get(t) ?? null;
+        return entry as { period: string; [ticker: string]: string | number | null };
+      });
+    }
   }
 
-  if (sectorName === "Health") {
-    const items = sectorCompanies
-      .map((c) => ({
-        ticker: c.ticker,
-        name: c.name,
-        mlr: latestMetrics[c.id]?.medical_loss_ratio ?? null,
-        adminMargin: latestMetrics[c.id]?.medical_loss_ratio != null
-          ? 100 - latestMetrics[c.id].medical_loss_ratio
-          : null,
-        revenue: latestMetrics[c.id]?.revenue ?? null,
-      }))
-      .filter((d): d is typeof d & { mlr: number; adminMargin: number } => d.mlr != null)
-      .sort((a, b) => a.adminMargin - b.adminMargin); // Thinnest margin first
-    return { type: "health-margin", data: items };
+  return { trendData, tickers };
+}
+
+type QuarterlyRow = {
+  company_id: string;
+  ticker: string;
+  metric_name: string;
+  metric_value: number;
+  fiscal_year: number;
+  fiscal_quarter: number;
+};
+
+function buildQuarterlyTrendData(
+  quarterlyRows: QuarterlyRow[],
+  companies: { id: string; ticker: string; sector: string }[],
+  sectorName: Sector,
+  metricNames: string[]
+): { trendData: SectorTrendData; tickers: string[] } {
+  const sectorCompanies = companies
+    .filter((c) => c.sector === sectorName)
+    .sort((a, b) => a.ticker.localeCompare(b.ticker));
+  const tickers = sectorCompanies.map((c) => c.ticker);
+  const tickerById = new Map(sectorCompanies.map((c) => [c.id, c.ticker]));
+  const trendData: SectorTrendData = {};
+
+  for (const metric of metricNames) {
+    const periodMap = new Map<string, Map<string, number>>();
+    for (const row of quarterlyRows) {
+      if (row.metric_name !== metric) continue;
+      const ticker = tickerById.get(row.company_id);
+      if (!ticker) continue;
+      const periodKey = `${row.fiscal_year} Q${row.fiscal_quarter}`;
+      if (!periodMap.has(periodKey)) periodMap.set(periodKey, new Map());
+      periodMap.get(periodKey)!.set(ticker, row.metric_value);
+    }
+    // Sort periods chronologically
+    const periods = Array.from(periodMap.keys()).sort((a, b) => {
+      const [aY, aQ] = a.split(" Q").map(Number);
+      const [bY, bQ] = b.split(" Q").map(Number);
+      return aY * 10 + aQ - (bY * 10 + bQ);
+    });
+    if (periods.length > 0) {
+      trendData[metric] = periods.map((period) => {
+        const tickerVals = periodMap.get(period)!;
+        const entry: Record<string, string | number | null> = { period };
+        for (const t of tickers) entry[t] = tickerVals.get(t) ?? null;
+        return entry as { period: string; [ticker: string]: string | number | null };
+      });
+    }
   }
-
-  if (sectorName === "Life") {
-    const items = sectorCompanies
-      .map((c) => {
-        const m = latestMetrics[c.id] ?? {};
-        return {
-          ticker: c.ticker,
-          name: c.name,
-          totalAssets: m.total_assets ?? null,
-          roe: m.roe ?? null,
-          netIncome: m.net_income ?? null,
-          score: scoreMap.get(c.id)?.totalScore ?? null,
-        };
-      })
-      .filter((d): d is typeof d & { totalAssets: number; roe: number } =>
-        d.totalAssets != null && d.roe != null);
-
-    const avgAssets = items.length > 0
-      ? items.reduce((s, d) => s + d.totalAssets, 0) / items.length : 0;
-    const avgRoe = items.length > 0
-      ? items.reduce((s, d) => s + d.roe, 0) / items.length : 0;
-
-    return { type: "life-bubble", data: items, avgAssets, avgRoe };
-  }
-
-  // Brokers
-  const items = sectorCompanies
-    .map((c) => {
-      const m = latestMetrics[c.id] ?? {};
-      return {
-        ticker: c.ticker,
-        name: c.name,
-        debtToEquity: m.debt_to_equity ?? null,
-        roe: m.roe ?? null,
-        revenue: m.revenue ?? null,
-      };
-    })
-    .filter((d): d is typeof d & { debtToEquity: number } => d.debtToEquity != null)
-    .sort((a, b) => b.debtToEquity - a.debtToEquity);
-
-  const avgDE = items.length > 0
-    ? items.reduce((s, d) => s + d.debtToEquity, 0) / items.length : null;
-  const roeValues = items.filter((d) => d.roe != null).map((d) => d.roe!);
-  const avgROE = roeValues.length > 0
-    ? roeValues.reduce((s, v) => s + v, 0) / roeValues.length : null;
-
-  return { type: "broker-leverage", data: items, avgDE, avgROE };
+  return { trendData, tickers };
 }
 
 interface HomePageProps {
@@ -320,28 +236,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     return <div className="container px-4 py-20 text-center text-muted-foreground">Loading sector data...</div>;
   }
 
-  const { bulkScoringData, scores, scoreMap, signalMap } = data;
+  const { bulkScoringData, quarterlyRows, scores, signalMap } = data;
   const { companies: allCompanies, latestMetrics, sectorAverages } = bulkScoringData;
 
-  // Build sector-specific hero metrics
+  // Build sector-specific hero metrics (KPI strip)
   const sectorHeroMetrics = buildSectorHeroMetrics(
     activeSector,
     allCompanies,
     latestMetrics,
     bulkScoringData.timeseries
   );
-
-  // Build story chart data
-  const storyMetric = getSectorStoryMetric(activeSector.name);
-  const sectorCompanies = allCompanies.filter((c) => c.sector === activeSector.name);
-  const storyChartData = sectorCompanies
-    .map((c) => ({
-      ticker: c.ticker,
-      value: latestMetrics[c.id]?.[storyMetric] ?? null,
-    }))
-    .filter((d): d is { ticker: string; value: number } => d.value != null);
-
-  const storyChartAvg = sectorAverages[activeSector.name]?.[storyMetric]?.avg ?? null;
 
   // Filter top prospects to sector
   const sectorTopProspects = [...scores]
@@ -397,33 +301,33 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       } satisfies TopProspect;
     });
 
-  // Filter disruption targets to sector and sort by sector-appropriate metric
-  const sectorDisruptionTargets = data.disruptionTargets
-    .filter((t) => t.sector === activeSector.name)
-    .sort((a, b) => {
-      const sn = activeSector.name;
-      if (sn === "P&C" || sn === "Reinsurance")
-        return (b.combinedRatio ?? -Infinity) - (a.combinedRatio ?? -Infinity);
-      if (sn === "Health")
-        return (b.mlr ?? -Infinity) - (a.mlr ?? -Infinity);
-      if (sn === "Brokers")
-        return (b.debtToEquity ?? -Infinity) - (a.debtToEquity ?? -Infinity);
-      // Life: lowest ROE first
-      return (a.roe ?? Infinity) - (b.roe ?? Infinity);
-    });
+  // Build sector trend data from bulkScoringData (annual timeseries from financial_metrics)
+  const { trendData: sectorTrendData, tickers: sectorTickers } =
+    buildSectorTrendData(bulkScoringData, activeSector.name, activeSector.key_metrics);
 
-  // Build hero chart data per sector
-  const heroChartData = buildHeroChartData(activeSector, sectorCompanies, latestMetrics, scoreMap);
+  // Build quarterly trend data from mv_metric_timeseries
+  const { trendData: quarterlyTrendData } = buildQuarterlyTrendData(
+    quarterlyRows,
+    allCompanies,
+    activeSector.name,
+    activeSector.key_metrics
+  );
+
+  // Build P&C Market Pulse dashboard data if active sector is P&C
+  const pcDashboardData =
+    activeSector.name === "P&C"
+      ? buildPCDashboardFromBulk(bulkScoringData, scores)
+      : null;
 
   return (
     <SectorDashboard
       sector={activeSector}
       heroMetrics={sectorHeroMetrics}
       topProspects={sectorTopProspects}
-      disruptionTargets={sectorDisruptionTargets}
-      storyChartData={storyChartData}
-      storyChartAvg={storyChartAvg}
-      heroChartData={heroChartData}
+      sectorTrendData={sectorTrendData}
+      quarterlyTrendData={quarterlyTrendData}
+      sectorTickers={sectorTickers}
+      pcDashboardData={pcDashboardData}
     />
   );
 }

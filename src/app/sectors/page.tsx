@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSectorOverviews } from "@/lib/queries/sectors";
 import { getIndustryTimeseries } from "@/lib/queries/metrics";
 import { SectorOverviewGrid } from "@/components/sectors/sector-overview-grid";
+import { CrossSectorHighlights } from "@/components/sectors/cross-sector-highlights";
 import { aggregateSectorByPeriod } from "@/lib/metrics/aggregations";
 import { SECTORS } from "@/lib/data/sectors";
 
@@ -57,6 +58,8 @@ export default async function SectorsPage() {
         sectorOverviews={sectorOverviews}
         sectorSparklineTrends={sectorSparklineTrends}
       />
+
+      <CrossSectorHighlights sectorOverviews={sectorOverviews} />
     </div>
   );
 }

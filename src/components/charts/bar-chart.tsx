@@ -28,6 +28,7 @@ interface BarChartProps {
   showLegend?: boolean;
   yAxisTickFormatter?: (value: number) => string;
   tooltipFormatter?: (value: number, name: string) => ReactNode;
+  xAxisTickFormatter?: (value: string, index: number) => string;
 }
 
 export function BarChartComponent({
@@ -41,15 +42,16 @@ export function BarChartComponent({
   showLegend = true,
   yAxisTickFormatter,
   tooltipFormatter,
+  xAxisTickFormatter,
 }: BarChartProps) {
   const isVertical = layout === "vertical";
 
   return (
-    <ChartContainer config={config} className="w-full" style={{ height }}>
+    <ChartContainer config={config} className="w-full aspect-auto" style={{ height }}>
       <RechartsBarChart
         data={data}
         layout={isVertical ? "vertical" : "horizontal"}
-        margin={{ top: 8, right: 16, left: isVertical ? 80 : -4, bottom: 0 }}
+        margin={{ top: 8, right: 16, left: isVertical ? 80 : -4, bottom: 20 }}
       >
         <CartesianGrid
           horizontal={!isVertical}
@@ -57,43 +59,25 @@ export function BarChartComponent({
           strokeDasharray="2 6"
           className="stroke-border/15"
         />
-        {isVertical ? (
-          <>
-            <XAxis
-              type="number"
-              tickLine={false}
-              axisLine={false}
-              className="text-[10px] fill-muted-foreground"
-              tickMargin={8}
-              tickFormatter={yAxisTickFormatter as (value: string | number) => string}
-            />
-            <YAxis
-              type="category"
-              dataKey={xKey}
-              tickLine={false}
-              axisLine={false}
-              className="text-[10px] fill-muted-foreground"
-              width={80}
-            />
-          </>
-        ) : (
-          <>
-            <XAxis
-              dataKey={xKey}
-              tickLine={false}
-              axisLine={false}
-              className="text-[10px] fill-muted-foreground"
-              tickMargin={10}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              className="text-[10px] fill-muted-foreground"
-              width={56}
-              tickFormatter={yAxisTickFormatter as (value: string | number) => string}
-            />
-          </>
-        )}
+        <XAxis
+          {...(isVertical
+            ? { type: "number" as const, tickFormatter: yAxisTickFormatter as (value: string | number) => string }
+            : { dataKey: xKey, interval: 0 as const, tickFormatter: xAxisTickFormatter as (value: string | number) => string }
+          )}
+          tickLine={false}
+          axisLine={false}
+          className="text-[11px] fill-muted-foreground"
+          tickMargin={8}
+        />
+        <YAxis
+          {...(isVertical
+            ? { type: "category" as const, dataKey: xKey, width: 80 }
+            : { width: 56, tickFormatter: yAxisTickFormatter as (value: string | number) => string }
+          )}
+          tickLine={false}
+          axisLine={false}
+          className="text-[11px] fill-muted-foreground"
+        />
         <ChartTooltip
           content={
             <ChartTooltipContent

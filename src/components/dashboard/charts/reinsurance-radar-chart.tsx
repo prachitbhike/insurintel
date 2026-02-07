@@ -98,7 +98,7 @@ export function ReinsuranceRadarChart({ data }: ReinsuranceRadarChartProps) {
         <PolarGrid className="stroke-border/15" />
         <PolarAngleAxis
           dataKey="dimension"
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           tick={{ fontSize: 11 }}
         />
         <PolarRadiusAxis

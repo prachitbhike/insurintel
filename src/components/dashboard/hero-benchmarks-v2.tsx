@@ -61,7 +61,7 @@ function DeltaBadge({
   return (
     <span
       className={cn(
-        "text-xs font-mono",
+        "text-xs font-mono shrink-0 whitespace-nowrap",
         isGood ? "text-positive" : "text-negative"
       )}
     >
@@ -77,29 +77,29 @@ export function HeroBenchmarksV2({
     <div className="rounded-sm border border-border/40 bg-card/50 backdrop-blur-sm">
       <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-border/50">
         {heroMetrics.map((metric) => (
-          <div key={metric.label} className="px-4 py-3">
-            <div className="flex items-center gap-1.5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground truncate">
+          <div key={metric.label} className="px-3 py-2.5 overflow-hidden min-w-0">
+            <div className="flex items-center gap-1">
+              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground truncate">
                 {metric.label}
               </p>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-2.5 w-2.5 text-muted-foreground/40 cursor-help shrink-0" />
+                  <Info className="h-3 w-3 text-muted-foreground/40 cursor-help shrink-0" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="text-xs">{metric.tooltip}</p>
                 </TooltipContent>
               </Tooltip>
             </div>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
+            <div className="flex items-baseline gap-1 mt-0.5 min-w-0">
               {metric.isCount ? (
-                <p className="text-lg led-number data-glow tracking-tight font-semibold">
+                <p className="text-lg led-number data-glow tracking-tight font-semibold truncate">
                   {metric.current != null
                     ? `${metric.current} of ${metric.countTotal ?? "?"}`
                     : "N/A"}
                 </p>
               ) : (
-                <p className="text-lg led-number data-glow tracking-tight font-semibold">
+                <p className="text-lg led-number data-glow tracking-tight font-semibold shrink-0">
                   {formatMetricValue(metric.metricName, metric.current)}
                 </p>
               )}
@@ -111,7 +111,7 @@ export function HeroBenchmarksV2({
               />
             </div>
             {metric.annotation && (
-              <p className="font-mono text-[10px] text-muted-foreground leading-snug mt-0.5">
+              <p className="font-mono text-[11px] text-muted-foreground leading-snug mt-0.5">
                 {metric.annotation}
               </p>
             )}

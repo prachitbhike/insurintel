@@ -28,14 +28,14 @@ export function TopProspectsSection({ prospects, compact }: TopProspectsSectionP
     return (
       <div>
         <div className="flex items-baseline gap-2 mb-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-semibold">
+          <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
             Top Prospects
           </h3>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">
             Largest efficiency gaps
           </span>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {prospects.map((p) => (
             <Link
               key={p.companyId}
@@ -44,7 +44,7 @@ export function TopProspectsSection({ prospects, compact }: TopProspectsSectionP
             >
               <div
                 className={cn(
-                  "rounded-sm border border-border/30 p-2.5 transition-all duration-200",
+                  "rounded-sm border border-border/30 px-2.5 py-2 transition-all duration-200",
                   "group-hover:border-primary/30 dark:group-hover:shadow-[0_0_12px_-4px_oklch(0.72_0.19_145/0.2)]",
                   "border-l-[2px] border-l-primary/30",
                 )}
@@ -54,13 +54,13 @@ export function TopProspectsSection({ prospects, compact }: TopProspectsSectionP
                     <span className="font-mono font-bold text-xs shrink-0 data-glow">
                       {p.ticker}
                     </span>
-                    <span className="text-[10px] text-muted-foreground truncate">
+                    <span className="text-[11px] text-muted-foreground truncate">
                       {p.name}
                     </span>
                   </div>
                   <ScoreBadge score={p.prospectScore} size="sm" />
                 </div>
-                <p className="mt-1 font-mono text-[10px] leading-snug text-foreground/70 line-clamp-2">
+                <p className="mt-1 font-mono text-[11px] leading-snug text-foreground/70 line-clamp-2">
                   {p.hookSentence}
                 </p>
               </div>
@@ -106,7 +106,7 @@ export function TopProspectsSection({ prospects, compact }: TopProspectsSectionP
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <SectorBadge sector={p.sector} className="text-[10px] px-1.5 py-0" />
+                  <SectorBadge sector={p.sector} className="text-[11px] px-1.5 py-0" />
                   <ScoreBadge score={p.prospectScore} size="sm" />
                 </div>
               </div>
@@ -122,7 +122,7 @@ export function TopProspectsSection({ prospects, compact }: TopProspectsSectionP
                 {p.signalLine && (
                   <div className="flex items-start gap-1.5 mt-1">
                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-                    <p className="text-[11px] leading-snug text-muted-foreground">
+                    <p className="text-xs leading-snug text-muted-foreground">
                       {p.signalLine}
                     </p>
                   </div>

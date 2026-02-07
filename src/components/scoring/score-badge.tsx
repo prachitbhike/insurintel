@@ -17,7 +17,7 @@ export function ScoreBadge({ score, size = "md", className }: ScoreBadgeProps) {
       <span
         className={cn(
           "inline-flex items-center justify-center rounded-sm border text-muted-foreground font-mono",
-          size === "sm" && "h-5 w-8 text-[10px]",
+          size === "sm" && "h-5 w-8 text-[11px]",
           size === "md" && "h-6 w-10 text-xs",
           size === "lg" && "h-8 w-14 text-sm font-semibold",
           className
@@ -48,7 +48,7 @@ export function ScoreBadge({ score, size = "md", className }: ScoreBadgeProps) {
           "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20",
         tier === "low" &&
           "bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/20",
-        size === "sm" && "h-5 gap-0.5 px-1.5 text-[10px]",
+        size === "sm" && "h-5 gap-0.5 px-1.5 text-[11px]",
         size === "md" && "h-6 gap-0.5 px-1.5 text-xs cursor-help",
         size === "lg" && "h-8 gap-0.5 px-2 text-sm",
         className
@@ -56,9 +56,9 @@ export function ScoreBadge({ score, size = "md", className }: ScoreBadgeProps) {
     >
       {score}
       {size === "lg" ? (
-        <span className="text-[10px] font-normal opacity-60">/100</span>
+        <span className="text-[11px] font-normal opacity-60">/100</span>
       ) : (
-        <span className="text-[9px] font-normal opacity-60">{tierLabel}</span>
+        <span className="text-[10px] font-normal opacity-60">{tierLabel}</span>
       )}
     </span>
   );
@@ -68,9 +68,17 @@ export function ScoreBadge({ score, size = "md", className }: ScoreBadgeProps) {
       <Tooltip>
         <TooltipTrigger asChild>{badge}</TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
-          <p className="text-xs">
-            Prospect score out of 100. 70+ = High, 40-69 = Medium, &lt;40 = Low.
-          </p>
+          <div className="text-xs space-y-1">
+            <p className="font-medium">Efficiency Score (0-100)</p>
+            <p>Weighted composite of four dimensions:</p>
+            <ul className="list-disc pl-3.5 space-y-0.5">
+              <li>Operational gap vs. sector peers (40%)</li>
+              <li>Trend direction over 3 years (25%)</li>
+              <li>Revenue scale (20%)</li>
+              <li>Company size fit (15%)</li>
+            </ul>
+            <p className="text-muted-foreground">70+ = High, 40-69 = Mid, &lt;40 = Low</p>
+          </div>
         </TooltipContent>
       </Tooltip>
     );

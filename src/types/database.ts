@@ -37,7 +37,9 @@ export type Sector =
   | "Life"
   | "Health"
   | "Reinsurance"
-  | "Brokers";
+  | "Brokers"
+  | "Title"
+  | "Mortgage Insurance";
 
 export interface LatestMetric {
   company_id: string;

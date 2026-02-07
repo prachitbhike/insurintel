@@ -63,6 +63,8 @@ export function CommandSearch() {
     Health: "text-violet-600 dark:text-violet-400",
     Reinsurance: "text-amber-600 dark:text-amber-400",
     Brokers: "text-rose-600 dark:text-rose-400",
+    Title: "text-teal-600 dark:text-teal-400",
+    "Mortgage Insurance": "text-indigo-600 dark:text-indigo-400",
   };
 
   return (

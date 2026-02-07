@@ -100,11 +100,11 @@ export function ComparisonTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[180px] font-mono text-[10px] uppercase tracking-[0.15em]">Metric</TableHead>
+              <TableHead className="min-w-[180px] font-mono text-[11px] uppercase tracking-[0.15em]">Metric</TableHead>
               {companies.map((c) => (
-                <TableHead key={c.ticker} className="text-right min-w-[110px] font-mono text-[10px] uppercase tracking-[0.15em]">
+                <TableHead key={c.ticker} className="text-right min-w-[110px] font-mono text-[11px] uppercase tracking-[0.15em]">
                   <div className="font-semibold">{c.ticker}</div>
-                  <div className="text-[9px] font-normal text-muted-foreground">{c.sector}</div>
+                  <div className="text-[10px] font-normal text-muted-foreground">{c.sector}</div>
                 </TableHead>
               ))}
             </TableRow>
@@ -139,7 +139,7 @@ export function ComparisonTable({
                     <TableRow>
                       <TableCell
                         colSpan={companies.length + 1}
-                        className="bg-secondary/40 py-1.5 px-3 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
+                        className="bg-secondary/40 py-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.15em] text-muted-foreground"
                       >
                         {categoryLabels[category]}
                       </TableCell>

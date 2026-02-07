@@ -62,7 +62,7 @@ export function PCBreakevenChart({ data, sectorAvg }: PCBreakevenChartProps) {
           type="number"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           tickFormatter={(v: number) => `${v.toFixed(0)}%`}
           domain={[
             (dataMin: number) => Math.floor(Math.min(dataMin, 90)),
@@ -74,7 +74,7 @@ export function PCBreakevenChart({ data, sectorAvg }: PCBreakevenChartProps) {
           dataKey="ticker"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground font-mono"
+          className="text-[11px] fill-muted-foreground font-mono"
           width={48}
         />
         <ReferenceLine
@@ -85,7 +85,7 @@ export function PCBreakevenChart({ data, sectorAvg }: PCBreakevenChartProps) {
           label={{
             value: "Breakeven",
             position: "top",
-            className: "text-[10px] fill-red-500 font-medium",
+            className: "text-[11px] fill-red-500 font-medium",
           }}
         />
         {sectorAvg != null && (
@@ -96,7 +96,7 @@ export function PCBreakevenChart({ data, sectorAvg }: PCBreakevenChartProps) {
             label={{
               value: `Avg ${sectorAvg.toFixed(1)}%`,
               position: "insideTopRight",
-              className: "text-[10px] fill-muted-foreground",
+              className: "text-[11px] fill-muted-foreground",
             }}
           />
         )}
@@ -126,7 +126,7 @@ export function PCBreakevenChart({ data, sectorAvg }: PCBreakevenChartProps) {
           <LabelList
             dataKey="combinedRatio"
             position="right"
-            className="fill-muted-foreground text-[10px] font-mono"
+            className="fill-muted-foreground text-[11px] font-mono"
             formatter={(v: number) => `${v.toFixed(1)}%`}
           />
         </Bar>

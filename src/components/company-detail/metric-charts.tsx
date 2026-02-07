@@ -9,7 +9,7 @@ import { BarChartComponent } from "@/components/charts/bar-chart";
 import { type TimeseriesPoint } from "@/types/company";
 import { type ChartConfig } from "@/components/ui/chart";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
-import { formatMetricValue, formatChartTick, periodLabel, periodSortKey } from "@/lib/metrics/formatters";
+import { formatMetricValue, formatChartTick, periodLabel, periodSortKey, abbreviateQuarterlyLabel } from "@/lib/metrics/formatters";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { ExportButtonGroup } from "@/components/ui/export-button-group";
 import { exportChartAsPNG } from "@/lib/export/chart-png";
@@ -111,7 +111,7 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab} data-chart-export="metric-charts">
           <TabsList className="mb-3">
             {applicableTabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="font-mono text-[10px] uppercase rounded-sm">
+              <TabsTrigger key={tab.value} value={tab.value} className="font-mono text-[11px] uppercase rounded-sm">
                 {tab.label}
               </TabsTrigger>
             ))}
@@ -177,8 +177,25 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
                       return point;
                     });
 
+                    // Filter out metrics with fewer than 2 data points (disconnected dots)
+                    const sparseMetrics: { metricName: string; label: string; value: number; period: string }[] = [];
+                    const plottableMetrics = metrics.filter((m) => {
+                      const nonNullCount = chartData.filter((d) => d[m] != null).length;
+                      if (nonNullCount < 2 && nonNullCount > 0) {
+                        const point = chartData.find((d) => d[m] != null)!;
+                        sparseMetrics.push({
+                          metricName: m,
+                          label: METRIC_DEFINITIONS[m]?.label ?? m.replace(/_/g, " "),
+                          value: point[m] as number,
+                          period: point.period as string,
+                        });
+                        return false;
+                      }
+                      return true;
+                    });
+
                     const config: ChartConfig = {};
-                    metrics.forEach((m, i) => {
+                    plottableMetrics.forEach((m, i) => {
                       config[m] = {
                         label: METRIC_DEFINITIONS[m]?.label ?? m.replace(/_/g, " "),
                         color: CHART_COLORS[i % CHART_COLORS.length],
@@ -210,15 +227,27 @@ export function MetricCharts({ timeseries, sector }: MetricChartsProps) {
                             {unitLabel ? ` (${unitLabel})` : ""}
                           </p>
                         )}
-                        <ChartComponent
-                          data={chartData}
-                          xKey="period"
-                          dataKeys={metrics}
-                          config={config}
-                          height={chartHeight}
-                          yAxisTickFormatter={tickFn}
-                          tooltipFormatter={tooltipFn}
-                        />
+                        {plottableMetrics.length > 0 && (
+                          <ChartComponent
+                            data={chartData}
+                            xKey="period"
+                            dataKeys={plottableMetrics}
+                            config={config}
+                            height={chartHeight}
+                            yAxisTickFormatter={tickFn}
+                            tooltipFormatter={tooltipFn}
+                            xAxisTickFormatter={periodType === "quarterly" ? abbreviateQuarterlyLabel : undefined}
+                          />
+                        )}
+                        {sparseMetrics.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {sparseMetrics.map((sm) => (
+                              <p key={sm.metricName} className="text-xs text-muted-foreground">
+                                {sm.label}: {formatMetricValue(sm.metricName, sm.value)} ({sm.period} only)
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -31,7 +31,7 @@ interface HealthMarginChartProps {
 const chartConfig = {
   mlr: {
     label: "Claims (MLR)",
-    color: "hsl(var(--muted))",
+    color: "var(--muted)",
   },
   adminMargin: {
     label: "Admin Margin",
@@ -66,7 +66,7 @@ export function HealthMarginChart({ data }: HealthMarginChartProps) {
           type="number"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           domain={[0, 100]}
           tickFormatter={(v: number) => `${v}%`}
         />
@@ -75,7 +75,7 @@ export function HealthMarginChart({ data }: HealthMarginChartProps) {
           dataKey="ticker"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground font-mono"
+          className="text-[11px] fill-muted-foreground font-mono"
           width={48}
         />
         <ReferenceLine
@@ -86,7 +86,7 @@ export function HealthMarginChart({ data }: HealthMarginChartProps) {
           label={{
             value: "ACA 85% Floor",
             position: "top",
-            className: "text-[10px] fill-violet-500 font-medium",
+            className: "text-[11px] fill-violet-500 font-medium",
           }}
         />
         <ChartTooltip
@@ -106,7 +106,7 @@ export function HealthMarginChart({ data }: HealthMarginChartProps) {
         <Bar
           dataKey="mlr"
           stackId="stack"
-          fill="hsl(var(--muted-foreground) / 0.2)"
+          fill="oklch(0.55 0.015 250 / 0.2)"
           radius={[0, 0, 0, 0]}
           maxBarSize={28}
         />
@@ -120,7 +120,7 @@ export function HealthMarginChart({ data }: HealthMarginChartProps) {
           <LabelList
             dataKey="adminMargin"
             position="right"
-            className="fill-violet-600 dark:fill-violet-400 text-[10px] font-mono font-medium"
+            className="fill-violet-600 dark:fill-violet-400 text-[11px] font-mono font-medium"
             formatter={(v: number) => `${v.toFixed(1)}% margin`}
           />
         </Bar>

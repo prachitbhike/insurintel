@@ -16,6 +16,8 @@ import { Info } from "lucide-react";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { type CompanyListItem } from "@/types/company";
 import { type LatestMetric, type SectorAverage } from "@/types/database";
+import { fetchPCDashboardData, type PCDashboardData } from "@/lib/queries/pc-dashboard";
+import { PCMarketPulseDashboard } from "@/components/dashboard/pc-market-pulse/pc-market-pulse-dashboard";
 
 export const revalidate = 3600;
 
@@ -57,6 +59,8 @@ export default async function SectorDetailPage({ params }: PageProps) {
   let tickers: string[] = [];
   let tableData: CompanyListItem[] = [];
   let heroStats: ComputedHeroStat[] = [];
+  let pcDashboardData: PCDashboardData | null = null;
+  const isPCsector = sector.slug === "p-and-c";
 
   try {
     const supabase = await createClient();
@@ -201,6 +205,11 @@ export default async function SectorDetailPage({ params }: PageProps) {
       };
     });
 
+    // Fetch P&C dashboard data if applicable
+    if (isPCsector) {
+      pcDashboardData = await fetchPCDashboardData(supabase, companies, sectorAvgRows);
+    }
+
     tableData = companies.map((c) => {
       const cm = metricsByCompany.get(c.id);
       return {
@@ -217,8 +226,8 @@ export default async function SectorDetailPage({ params }: PageProps) {
         sparkline_data: [],
       };
     });
-  } catch {
-    // Gracefully handle
+  } catch (error) {
+    console.error(`[SectorDetailPage] Failed to load sector "${sector.name}":`, error);
   }
 
   return (
@@ -274,24 +283,31 @@ export default async function SectorDetailPage({ params }: PageProps) {
       {/* Main Content */}
       <div className="container px-4 md:px-6">
         <div className="space-y-6 py-8">
-          {/* Trend Charts */}
-          <SectorTrendCharts
-            trendData={trendData}
-            quarterlyTrendData={quarterlyTrendData}
-            availableMetrics={sector.key_metrics}
-            tickers={tickers}
-          />
+          {isPCsector && pcDashboardData ? (
+            <PCMarketPulseDashboard dashboardData={pcDashboardData} />
+          ) : (
+            <>
+              {/* Trend Charts */}
+              <SectorTrendCharts
+                trendData={trendData}
+                quarterlyTrendData={quarterlyTrendData}
+                availableMetrics={sector.key_metrics}
+                tickers={tickers}
+                sector={sector.name}
+              />
 
-          {/* Companies Table */}
-          <div>
-            <h2 className="text-xl font-display tracking-tight mb-4">
-              Companies in {sector.label}
-            </h2>
-            <CompaniesTable
-              data={tableData}
-              initialSectorFilter={[sector.name]}
-            />
-          </div>
+              {/* Companies Table */}
+              <div>
+                <h2 className="text-xl font-display tracking-tight mb-4">
+                  Companies in {sector.label}
+                </h2>
+                <CompaniesTable
+                  data={tableData}
+                  initialSectorFilter={[sector.name]}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

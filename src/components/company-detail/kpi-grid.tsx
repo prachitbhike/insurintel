@@ -54,7 +54,10 @@ export function KpiGrid({ kpis, sector, rankings, interpretations }: KpiGridProp
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {heroMetrics.map((metricName) => {
+      {heroMetrics.filter((metricName) => {
+        const kpi = kpiMap.get(metricName);
+        return kpi?.current_value != null;
+      }).map((metricName) => {
         const def = METRIC_DEFINITIONS[metricName];
         const kpi = kpiMap.get(metricName);
         const rank = rankMap.get(metricName);
@@ -70,14 +73,14 @@ export function KpiGrid({ kpis, sector, rankings, interpretations }: KpiGridProp
         return (
           <Card key={metricName} className="relative py-0 rounded-sm card-glow terminal-surface">
             <CardHeader className="flex flex-row items-center justify-between px-4 pt-3 pb-1">
-              <CardTitle className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              <CardTitle className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 {def?.label ?? metricName.replace(/_/g, " ")}
               </CardTitle>
               <div className="flex items-center gap-1">
                 {interp && interp.verdict !== "neutral" && (
                   <div className="flex items-center gap-1">
                     <span className={cn("h-1.5 w-1.5 rounded-full", verdictDotColors[interp.verdict])} />
-                    <span className={cn("text-[10px] font-medium", verdictColors[interp.verdict])}>
+                    <span className={cn("text-xs font-medium", verdictColors[interp.verdict])}>
                       {interp.verdict}
                     </span>
                   </div>
@@ -99,14 +102,14 @@ export function KpiGrid({ kpis, sector, rankings, interpretations }: KpiGridProp
                 {formatMetricValue(metricName, kpi?.current_value ?? null)}
               </div>
               {interp && interp.plainEnglish !== interp.formattedValue && (
-                <p className="mt-0.5 text-[11px] leading-snug text-foreground/60">
+                <p className="mt-0.5 text-xs leading-snug text-foreground/60">
                   {interp.plainEnglish}
                 </p>
               )}
               {kpi?.change_pct != null && (
                 <div
                   className={cn(
-                    "mt-0.5 flex items-center gap-1 text-[11px] font-medium",
+                    "mt-0.5 flex items-center gap-1 text-xs font-medium",
                     trend === "positive" && "text-positive",
                     trend === "negative" && "text-negative",
                     trend === "neutral" && "text-muted-foreground"

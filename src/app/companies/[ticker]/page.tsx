@@ -1,36 +1,33 @@
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCompanyByTicker } from "@/lib/queries/companies";
-import { getLatestMetrics, getMetricTimeseries, getCompanyFinancials } from "@/lib/queries/metrics";
-import { getCompanyRankings } from "@/lib/queries/sectors";
-import { getSectorAverages } from "@/lib/queries/sectors";
+import {
+  getLatestMetrics,
+  getCompanyFinancials,
+} from "@/lib/queries/metrics";
+import { getCompanyRankings, getSectorAverages } from "@/lib/queries/sectors";
+import { getTechSignalsByCompany } from "@/lib/queries/tech-signals";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { SectorBadge } from "@/components/dashboard/sector-badge";
-import { ScoreBadge } from "@/components/scoring/score-badge";
-import { CompanyBrief } from "@/components/company-detail/company-brief";
-import { KpiGrid } from "@/components/company-detail/kpi-grid";
+import { PainChart } from "@/components/company-detail/pain-chart";
 import { OpportunityPanel } from "@/components/company-detail/opportunity-panel";
-import { MetricCharts } from "@/components/company-detail/metric-charts";
-import { PeerComparison } from "@/components/company-detail/peer-comparison";
-import { FinancialTable } from "@/components/company-detail/financial-table";
+import { ProspectScoreCard } from "@/components/company-detail/prospect-score-card";
+import { SignalsRow } from "@/components/company-detail/signals-row";
 import { METRIC_DEFINITIONS } from "@/lib/metrics/definitions";
-import { formatMetricValue } from "@/lib/metrics/formatters";
-import { interpretMetrics, type MetricInterpretation } from "@/lib/metrics/interpret";
+import { formatMetricValue, formatChangePct, getTrendDirection } from "@/lib/metrics/formatters";
 import { computeProspectScore } from "@/lib/scoring/prospect-score";
 import { generateFounderNarrative } from "@/lib/scoring/founder-narrative";
-import { type KpiValue, type TimeseriesPoint, type PeerComparison as PeerComparisonType, type FinancialRow } from "@/types/company";
+import { computeOpportunityData } from "@/lib/company-detail/helpers";
+import { type TimeseriesPoint } from "@/types/company";
 import { COMPANIES_SEED } from "@/lib/data/companies-seed";
-import { type Sector, type SectorAverage } from "@/types/database";
-
-const sectorTopBorder: Record<Sector, string> = {
-  "P&C": "border-t-blue-500",
-  Life: "border-t-emerald-500",
-  Health: "border-t-violet-500",
-  Reinsurance: "border-t-amber-500",
-  Brokers: "border-t-rose-500",
-};
+import { type Sector, type SectorAverage, type Company } from "@/types/database";
+import { type TechAdoptionSignal } from "@/types/tech-signals";
+import { type ProspectScoreResult } from "@/lib/scoring/types";
+import { cn } from "@/lib/utils";
 
 export const revalidate = 3600;
 
@@ -47,188 +44,97 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const decodedTicker = decodeURIComponent(ticker).toUpperCase();
   const seed = COMPANIES_SEED.find((c) => c.ticker === decodedTicker);
   const name = seed?.name ?? decodedTicker;
-
   return {
     title: `${decodedTicker} - ${name}`,
-    description: `Financial KPIs and metrics for ${name} (${decodedTicker}). View combined ratio, ROE, premiums, and more.`,
+    description: `Prospect profile for ${name} (${decodedTicker}). Efficiency score, pain metrics, and tech signals.`,
   };
 }
 
-function generateQuickTake(
-  companyName: string,
-  sector: string,
-  comparisons: PeerComparisonType[],
-  kpis: KpiValue[],
-): string[] {
-  const sentences: string[] = [];
-  const validComparisons = comparisons.filter(
-    (c) => c.company_value != null && c.sector_avg != null
-  );
+/* ─── Hero KPI config per sector ─── */
+const HERO_METRICS: Record<string, string[]> = {
+  "P&C": ["combined_ratio", "expense_ratio", "net_premiums_earned", "roe"],
+  Reinsurance: ["combined_ratio", "loss_ratio", "net_premiums_earned", "roe"],
+  Health: ["medical_loss_ratio", "revenue", "net_income", "roe"],
+  Life: ["roe", "net_premiums_earned", "investment_income", "book_value_per_share"],
+  Brokers: ["revenue", "net_income", "roe", "eps"],
+  Title: ["revenue", "net_income", "roe", "eps"],
+  "Mortgage Insurance": ["combined_ratio", "expense_ratio", "net_premiums_earned", "roe"],
+};
 
-  if (validComparisons.length === 0) return sentences;
+/* ─── Sector top border colors ─── */
+const sectorBorder: Record<Sector, string> = {
+  "P&C": "border-t-blue-500",
+  Life: "border-t-emerald-500",
+  Health: "border-t-violet-500",
+  Reinsurance: "border-t-amber-500",
+  Brokers: "border-t-rose-500",
+  Title: "border-t-teal-500",
+  "Mortgage Insurance": "border-t-indigo-500",
+};
 
-  // Score each metric by relative performance vs sector avg
-  const scored = validComparisons.map((c) => {
-    const def = METRIC_DEFINITIONS[c.metric_name];
-    const diff = c.company_value! - c.sector_avg!;
-    const absDiff = Math.abs(c.sector_avg!) > 0
-      ? Math.abs(diff / c.sector_avg!) * 100
-      : 0;
-    const isBetter = def?.higher_is_better ? diff > 0 : diff < 0;
-    return { ...c, def, absDiff, isBetter };
-  });
-
-  // Top strength
-  const strengths = scored.filter((s) => s.isBetter).sort((a, b) => b.absDiff - a.absDiff);
-  if (strengths.length > 0) {
-    const s = strengths[0];
-    const label = s.def?.label ?? s.metric_name.replace(/_/g, " ");
-    sentences.push(
-      `${companyName} leads its ${sector} peers with a ${label.toLowerCase()} of ${formatMetricValue(s.metric_name, s.company_value)}, vs the sector average of ${formatMetricValue(s.metric_name, s.sector_avg)}.`
-    );
-  }
-
-  // Top weakness
-  const weaknesses = scored.filter((s) => !s.isBetter).sort((a, b) => b.absDiff - a.absDiff);
-  if (weaknesses.length > 0) {
-    const w = weaknesses[0];
-    const label = w.def?.label ?? w.metric_name.replace(/_/g, " ");
-    const rankStr = w.rank != null && w.total != null ? `, ranking #${w.rank} of ${w.total}` : "";
-    sentences.push(
-      `Its ${label.toLowerCase()} of ${formatMetricValue(w.metric_name, w.company_value)} trails the sector average of ${formatMetricValue(w.metric_name, w.sector_avg)}${rankStr}.`
-    );
-  }
-
-  // YoY trend from KPIs
-  const kpisWithChange = kpis.filter(
-    (k) => k.change_pct != null && Math.abs(k.change_pct) >= 1
-  );
-  if (kpisWithChange.length > 0) {
-    const biggest = kpisWithChange.sort(
-      (a, b) => Math.abs(b.change_pct!) - Math.abs(a.change_pct!)
-    )[0];
-    const def = METRIC_DEFINITIONS[biggest.metric_name];
-    const label = def?.label ?? biggest.metric_name.replace(/_/g, " ");
-    const direction = biggest.change_pct! > 0 ? "increased" : "decreased";
-    sentences.push(
-      `${label} has ${direction} ${Math.abs(biggest.change_pct!).toFixed(1)}% year-over-year.`
-    );
-  }
-
-  return sentences;
-}
-
-/** Determine the key pain metric and compute automation savings for the Opportunity Panel */
-function computeOpportunityData(
-  sector: string,
-  metrics: Record<string, number | null>,
-  sectorAvgsRecord: Record<string, number | null>,
-  sectorMinsRecord: Record<string, number | null>,
-  sectorMaxesRecord: Record<string, number | null>,
-) {
-  // Pain metric config by sector
-  const PAIN_CONFIG: Record<string, { metric: string; label: string; lowerIsBetter: boolean }> = {
-    "P&C": { metric: "expense_ratio", label: "Expense Ratio", lowerIsBetter: true },
-    Reinsurance: { metric: "expense_ratio", label: "Expense Ratio", lowerIsBetter: true },
-    Health: { metric: "medical_loss_ratio", label: "Medical Loss Ratio", lowerIsBetter: true },
-    Life: { metric: "roe", label: "Return on Equity", lowerIsBetter: false },
-    Brokers: { metric: "debt_to_equity", label: "Debt-to-Equity", lowerIsBetter: true },
-  };
-
-  const config = PAIN_CONFIG[sector];
-  if (!config) return { painMetricName: null, painMetricLabel: "", painMetricValue: null, sectorAvgPainMetric: null, sectorBestPainMetric: null, automationSavings: null };
-
-  const painMetricValue = metrics[config.metric] ?? null;
-  const sectorAvgPainMetric = sectorAvgsRecord[config.metric] ?? null;
-
-  // Best = min for lower-is-better, max for higher-is-better
-  const sectorBestPainMetric = config.lowerIsBetter
-    ? (sectorMinsRecord[config.metric] ?? null)
-    : (sectorMaxesRecord[config.metric] ?? null);
-
-  // Compute automation savings
-  let automationSavings: number | null = null;
-  if (painMetricValue != null && sectorBestPainMetric != null) {
-    const premiums = metrics["net_premiums_earned"] ?? metrics["revenue"] ?? null;
-
-    if (sector === "P&C" || sector === "Reinsurance") {
-      // Expense ratio gap * premiums
-      const gap = painMetricValue - sectorBestPainMetric;
-      if (gap > 0 && premiums != null) {
-        automationSavings = (gap / 100) * premiums;
-      }
-    } else if (sector === "Health") {
-      // Admin margin gap: (1 - MLR) gap * premiums
-      const adminRatio = 1 - painMetricValue / 100;
-      const bestAdminRatio = 1 - sectorBestPainMetric / 100;
-      const gap = adminRatio - bestAdminRatio;
-      if (gap > 0 && premiums != null) {
-        automationSavings = gap * premiums;
-      }
-    }
-    // Life and Brokers: no direct savings calculation
-  }
-
-  return {
-    painMetricName: config.metric,
-    painMetricLabel: config.label,
-    painMetricValue,
-    sectorAvgPainMetric,
-    sectorBestPainMetric,
-    automationSavings,
-  };
-}
+/* ─── Pain chart subtitle per sector ─── */
+const PAIN_CHART_SUBTITLE: Record<string, string> = {
+  "P&C": "Combined ratio = loss ratio + expense ratio. Below 100% = underwriting profit.",
+  Reinsurance: "Combined ratio = loss ratio + expense ratio. Below 100% = underwriting profit.",
+  Health: "Medical loss ratio vs ACA floor. Lower MLR = wider admin margin.",
+  Life: "Return on equity trend. Higher = more efficient capital deployment.",
+  Brokers: "Return on equity trend. Higher = more efficient capital deployment.",
+  Title: "Return on equity trend. Higher = more efficient capital deployment.",
+  "Mortgage Insurance": "Combined ratio = loss ratio + expense ratio. Below 100% = underwriting profit.",
+};
 
 export default async function CompanyDetailPage({ params }: PageProps) {
   const { ticker } = await params;
   const decodedTicker = decodeURIComponent(ticker).toUpperCase();
 
-  let company;
-  let kpis: KpiValue[] = [];
+  let company: Company;
   const timeseries: Record<string, TimeseriesPoint[]> = {};
-  let peerComparisons: PeerComparisonType[] = [];
-  let annualFinancials: FinancialRow[] = [];
-  let quarterlyFinancials: FinancialRow[] = [];
-  let financialYears: string[] = [];
-  let quarterlyPeriods: string[] = [];
-  let founderNarrative: ReturnType<typeof generateFounderNarrative> | null = null;
-  let prospectScoreResult: ReturnType<typeof computeProspectScore> | null = null;
-  let rankingsForGrid: { metric_name: string; rank_in_sector: number; total_in_sector: number }[] = [];
-  let opportunityData = { painMetricName: null as string | null, painMetricLabel: "", painMetricValue: null as number | null, sectorAvgPainMetric: null as number | null, sectorBestPainMetric: null as number | null, automationSavings: null as number | null };
-  let metricInterpretations: Record<string, MetricInterpretation> = {};
+  let prospectScoreResult: ProspectScoreResult | null = null;
+  let hookSentence = "";
+  let useCases: { id: string; name: string; reasoning: string }[] = [];
+  let techSignals: TechAdoptionSignal[] = [];
+  let sectorAvgsRecord: Record<string, number | null> = {};
+  let opportunityData = {
+    painMetricName: null as string | null,
+    painMetricLabel: "",
+    painMetricValue: null as number | null,
+    sectorAvgPainMetric: null as number | null,
+    sectorBestPainMetric: null as number | null,
+    automationSavings: null as number | null,
+  };
+
+  // KPI data
+  let kpiData: {
+    metricName: string;
+    label: string;
+    value: number;
+    changePct: number | null;
+    rank: number | null;
+    total: number | null;
+  }[] = [];
 
   try {
     const supabase = await createClient();
-    company = await getCompanyByTicker(supabase, decodedTicker);
+    const maybeCompany = await getCompanyByTicker(supabase, decodedTicker);
+    if (!maybeCompany) notFound();
+    company = maybeCompany;
 
-    if (!company) {
-      notFound();
-    }
-
-    const [latestMetrics, tsData, rankings, sectorAvgs, annualData, quarterlyData] =
+    const [latestMetrics, rankings, sectorAvgs, annualData, techSignalsData] =
       await Promise.all([
         getLatestMetrics(supabase, company.id),
-        getMetricTimeseries(supabase, company.id),
         getCompanyRankings(supabase, company.id),
         getSectorAverages(supabase, company.sector),
         getCompanyFinancials(supabase, company.id, "annual"),
-        getCompanyFinancials(supabase, company.id, "quarterly"),
+        getTechSignalsByCompany(supabase, company.id),
       ]);
 
-    // Build rankings for KPI grid
-    rankingsForGrid = rankings.map((r) => ({
-      metric_name: r.metric_name,
-      rank_in_sector: r.rank_in_sector,
-      total_in_sector: r.total_in_sector,
-    }));
+    techSignals = techSignalsData;
 
-    // Build KPIs with prior year comparison
-    const metricsByName = new Map<string, typeof latestMetrics[0]>();
-    for (const m of latestMetrics) {
-      metricsByName.set(m.metric_name, m);
-    }
+    // Metrics lookups
+    const metricsByName = new Map(latestMetrics.map((m) => [m.metric_name, m]));
+    const rankingMap = new Map(rankings.map((r) => [r.metric_name, r]));
 
-    // Get prior year data for comparison (from annual financials, not quarterly MV)
+    // Prior year for YoY
     const priorYearData = new Map<string, number>();
     for (const d of annualData) {
       const latest = metricsByName.get(d.metric_name);
@@ -237,32 +143,29 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       }
     }
 
-    kpis = latestMetrics.map((m) => {
-      const prior = priorYearData.get(m.metric_name);
-      let changePct: number | null = null;
-      if (prior != null && prior !== 0) {
-        changePct = ((m.metric_value - prior) / Math.abs(prior)) * 100;
-      }
-      return {
-        metric_name: m.metric_name,
-        current_value: m.metric_value,
-        prior_value: prior ?? null,
-        change_pct: changePct,
-        unit: m.unit,
-        fiscal_year: m.fiscal_year,
-      };
-    });
-
-    // Build timeseries grouped by metric — quarterly from MV, annual from financials
-    for (const ts of tsData) {
-      if (!timeseries[ts.metric_name]) timeseries[ts.metric_name] = [];
-      timeseries[ts.metric_name].push({
-        fiscal_year: ts.fiscal_year,
-        fiscal_quarter: ts.fiscal_quarter,
-        value: ts.metric_value,
+    // Build compact KPI data
+    const heroMetrics = HERO_METRICS[company.sector] ?? HERO_METRICS["P&C"];
+    kpiData = heroMetrics
+      .filter((m) => metricsByName.has(m))
+      .map((m) => {
+        const metric = metricsByName.get(m)!;
+        const prior = priorYearData.get(m);
+        const changePct =
+          prior != null && prior !== 0
+            ? ((metric.metric_value - prior) / Math.abs(prior)) * 100
+            : null;
+        const rank = rankingMap.get(m);
+        return {
+          metricName: m,
+          label: METRIC_DEFINITIONS[m]?.label ?? m.replace(/_/g, " "),
+          value: metric.metric_value,
+          changePct,
+          rank: rank?.rank_in_sector ?? null,
+          total: rank?.total_in_sector ?? null,
+        };
       });
-    }
-    // Merge annual data into timeseries (MV only has quarterly)
+
+    // Build timeseries (annual only)
     for (const d of annualData) {
       if (!timeseries[d.metric_name]) timeseries[d.metric_name] = [];
       timeseries[d.metric_name].push({
@@ -272,74 +175,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       });
     }
 
-    // Build peer comparisons
-    const sectorAvgMap = new Map(sectorAvgs.map((a) => [a.metric_name, a.avg_value]));
-    const rankingMap = new Map(rankings.map((r) => [r.metric_name, r]));
-
-    // Sector-aware peer comparison metrics
-    const sectorMetricMap: Record<string, string[]> = {
-      "P&C": ["combined_ratio", "loss_ratio", "expense_ratio", "roe", "roa", "eps", "net_premiums_earned", "net_income", "book_value_per_share"],
-      "Reinsurance": ["combined_ratio", "loss_ratio", "expense_ratio", "roe", "roa", "eps", "net_premiums_earned", "net_income", "book_value_per_share"],
-      "Health": ["medical_loss_ratio", "roe", "roa", "eps", "revenue", "net_income", "book_value_per_share", "debt_to_equity"],
-      "Life": ["roe", "roa", "eps", "net_premiums_earned", "net_income", "book_value_per_share", "investment_income", "debt_to_equity"],
-      "Brokers": ["roe", "roa", "eps", "revenue", "net_income", "book_value_per_share", "debt_to_equity"],
-    };
-    const comparisonMetrics = sectorMetricMap[company.sector] ?? ["roe", "roa", "eps", "net_income", "book_value_per_share"];
-
-    peerComparisons = comparisonMetrics
-      .filter((m) => metricsByName.has(m))
-      .map((m) => {
-        const ranking = rankingMap.get(m);
-        return {
-          metric_name: m,
-          company_value: metricsByName.get(m)?.metric_value ?? null,
-          sector_avg: sectorAvgMap.get(m) ?? null,
-          rank: ranking?.rank_in_sector ?? null,
-          total: ranking?.total_in_sector ?? null,
-        };
-      });
-
-    // Build financial table data
-    const yearSet = new Set<number>();
-    for (const d of annualData) yearSet.add(d.fiscal_year);
-    financialYears = [...yearSet].sort((a, b) => b - a).map(String);
-
-    const annualMap = new Map<string, Record<string, number | null>>();
-    for (const d of annualData) {
-      if (!annualMap.has(d.metric_name)) annualMap.set(d.metric_name, {});
-      annualMap.get(d.metric_name)![String(d.fiscal_year)] = d.metric_value;
-    }
-    annualFinancials = [...annualMap.entries()].map(([name, values]) => ({
-      metric_name: name,
-      values,
-      unit: "USD",
-    }));
-
-    const qMap = new Map<string, Record<string, number | null>>();
-    const qYearSet = new Set<string>();
-    for (const d of quarterlyData) {
-      if (!qMap.has(d.metric_name)) qMap.set(d.metric_name, {});
-      const key = `${d.fiscal_year} Q${d.fiscal_quarter}`;
-      qMap.get(d.metric_name)![key] = d.metric_value;
-      qYearSet.add(key);
-    }
-    quarterlyFinancials = [...qMap.entries()].map(([name, values]) => ({
-      metric_name: name,
-      values,
-      unit: "USD",
-    }));
-
-    // Sort quarterly periods descending (e.g. "2024 Q4", "2024 Q3", ...)
-    quarterlyPeriods = [...qYearSet].sort((a, b) => {
-      const [aY, aQ] = a.split(" Q").map(Number);
-      const [bY, bQ] = b.split(" Q").map(Number);
-      return (bY * 10 + bQ) - (aY * 10 + aQ);
-    });
-
-    // Compute prospect score + founder narrative
-    const metricsRecord: Record<string, number | null> = {};
-    for (const [name, m] of metricsByName) metricsRecord[name] = m.metric_value;
-    const sectorAvgsRecord: Record<string, number | null> = {};
+    // Sector averages
     const sectorMinsRecord: Record<string, number | null> = {};
     const sectorMaxesRecord: Record<string, number | null> = {};
     for (const avg of sectorAvgs as SectorAverage[]) {
@@ -347,11 +183,17 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       sectorMinsRecord[avg.metric_name] = avg.min_value;
       sectorMaxesRecord[avg.metric_name] = avg.max_value;
     }
+
+    // Prospect score
+    const metricsRecord: Record<string, number | null> = {};
+    for (const [name, m] of metricsByName) metricsRecord[name] = m.metric_value;
+
     const tsForScoring: Record<string, { fiscal_year: number; value: number }[]> = {};
     for (const d of annualData) {
       if (!tsForScoring[d.metric_name]) tsForScoring[d.metric_name] = [];
       tsForScoring[d.metric_name].push({ fiscal_year: d.fiscal_year, value: d.metric_value });
     }
+
     prospectScoreResult = computeProspectScore({
       companyId: company.id,
       ticker: company.ticker,
@@ -363,15 +205,14 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       sectorMaxes: sectorMaxesRecord,
       timeseries: tsForScoring,
     });
-    // Build timeseries lookup for narrative (metric → year → value)
+
+    // Founder narrative
     const tsForNarrative: Record<string, Record<number, number>> = {};
     for (const [metric, entries] of Object.entries(tsForScoring)) {
       tsForNarrative[metric] = {};
-      for (const e of entries) {
-        tsForNarrative[metric][e.fiscal_year] = e.value;
-      }
+      for (const e of entries) tsForNarrative[metric][e.fiscal_year] = e.value;
     }
-    founderNarrative = generateFounderNarrative({
+    const narrative = generateFounderNarrative({
       companyName: company.name,
       ticker: company.ticker,
       sector: company.sector as Sector,
@@ -380,36 +221,16 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       prospectScore: prospectScoreResult,
       timeseries: tsForNarrative,
     });
+    hookSentence = narrative.hookSentence;
+    useCases = narrative.relevantUseCases;
 
-    // Compute opportunity panel data
+    // Opportunity data
     opportunityData = computeOpportunityData(
       company.sector,
       metricsRecord,
       sectorAvgsRecord,
       sectorMinsRecord,
       sectorMaxesRecord,
-    );
-
-    // Compute metric interpretations
-    const sectorAvgsForInterp: Record<string, { avg: number; min: number; max: number }> = {};
-    for (const avg of sectorAvgs as SectorAverage[]) {
-      sectorAvgsForInterp[avg.metric_name] = {
-        avg: avg.avg_value,
-        min: avg.min_value,
-        max: avg.max_value,
-      };
-    }
-    const ranksForInterp: Record<string, { rank: number; total: number }> = {};
-    for (const r of rankings) {
-      ranksForInterp[r.metric_name] = { rank: r.rank_in_sector, total: r.total_in_sector };
-    }
-    const premiumBase = metricsRecord["net_premiums_earned"] ?? metricsRecord["revenue"] ?? null;
-    metricInterpretations = interpretMetrics(
-      metricsRecord,
-      company.sector,
-      sectorAvgsForInterp,
-      premiumBase,
-      ranksForInterp,
     );
   } catch {
     const seed = COMPANIES_SEED.find((c) => c.ticker === decodedTicker);
@@ -419,7 +240,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
       cik: seed.cik,
       ticker: seed.ticker,
       name: seed.name,
-      sector: seed.sector,
+      sector: seed.sector as Sector,
       sub_sector: seed.sub_sector,
       entity_name: null,
       market_cap_bucket: null,
@@ -431,82 +252,152 @@ export default async function CompanyDetailPage({ params }: PageProps) {
     };
   }
 
-  const quickTakeSentences = generateQuickTake(
-    company.name,
-    company.sector,
-    peerComparisons,
-    kpis,
-  );
+  const score = prospectScoreResult?.totalScore ?? null;
+  const scoreTier = score != null ? (score >= 70 ? "High" : score >= 40 ? "Mid" : "Low") : null;
+  const scoreColor = score != null ? (score >= 70 ? "text-emerald-500" : score >= 40 ? "text-yellow-500" : "text-red-500") : "";
+  const latestTech = techSignals.length > 0 ? techSignals[0] : null;
 
   return (
-    <div className={`container space-y-5 px-4 py-5 md:px-6 border-t-2 ${sectorTopBorder[company.sector as Sector] ?? ""}`}>
-      {/* Header: Ticker, Name, Sector Badge, Score Badge, SEC link */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="font-mono text-3xl font-bold data-glow tracking-tight">
-            {company.ticker}
-          </h1>
-          <span className="text-sm text-muted-foreground truncate">
-            {company.name}
-          </span>
-          <SectorBadge sector={company.sector} />
-          <ScoreBadge score={prospectScoreResult?.totalScore ?? null} size="md" />
+    <div className={cn("container px-4 py-5 md:px-6 border-t-2 space-y-4", sectorBorder[company.sector as Sector] ?? "")}>
+
+      {/* ── HEADER BLOCK ── */}
+      <div className="space-y-2">
+        {/* Row 1: Identity + Score */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="font-mono text-2xl font-bold tracking-tight">
+              {company.ticker}
+            </h1>
+            <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+              {company.name}
+            </span>
+            <SectorBadge sector={company.sector as Sector} />
+          </div>
+          <div className="flex items-center gap-3">
+            {score != null && (
+              <div className="flex items-baseline gap-1">
+                <span className={cn("text-3xl font-mono font-bold tabular-nums data-glow", scoreColor)}>
+                  {score}
+                </span>
+                <span className="text-xs text-muted-foreground">/100</span>
+                <span className={cn("text-xs font-medium ml-1", scoreColor)}>
+                  {scoreTier}
+                </span>
+              </div>
+            )}
+            <Link
+              href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${company.cik}&type=10-K&dateb=&owner=include&count=10`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            >
+              SEC Filings <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
-        <Link
-          href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${company.cik}&type=10-K&dateb=&owner=include&count=10`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          SEC Filings
-          <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
 
-      {/* Company Brief (merged Quick Take + Founder Insights) */}
-      <div className="animate-fade-up delay-1">
-        <CompanyBrief
-          quickTakeSentences={quickTakeSentences}
-          founderNarrative={founderNarrative}
-        />
-      </div>
+        {/* Row 2: Page descriptor */}
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
+          Carrier Profile &mdash; Sales Intelligence for AI Startups
+        </p>
 
-      {/* Hero Metrics Row (4 sector-specific KPIs with rank) */}
-      <div className="animate-fade-up delay-1">
-        <KpiGrid kpis={kpis} sector={company.sector} rankings={rankingsForGrid} interpretations={metricInterpretations} />
-      </div>
+        {/* Row 3: Inline KPIs */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {kpiData.map((kpi) => {
+            const trend = getTrendDirection(kpi.metricName, kpi.changePct);
+            const TrendIcon = trend === "positive" ? TrendingUp : trend === "negative" ? TrendingDown : Minus;
+            return (
+              <div key={kpi.metricName} className="rounded-sm border bg-card px-4 py-3 card-glow terminal-surface">
+                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground truncate">
+                  {kpi.label}
+                </p>
+                <p className="text-lg font-semibold font-mono tabular-nums led-number data-glow mt-0.5">
+                  {formatMetricValue(kpi.metricName, kpi.value)}
+                </p>
+                {kpi.changePct != null && (
+                  <div className={cn(
+                    "flex items-center gap-0.5 text-[11px] font-medium mt-0.5",
+                    trend === "positive" && "text-positive",
+                    trend === "negative" && "text-negative",
+                    trend === "neutral" && "text-muted-foreground",
+                  )}>
+                    <TrendIcon className="h-3 w-3" />
+                    <span>
+                      {formatChangePct(kpi.changePct)} YoY
+                      {kpi.rank != null && kpi.total != null && ` · #${kpi.rank}/${kpi.total}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-      {/* AI Opportunity Panel + Key Trends side by side on wide screens */}
-      <div className="animate-fade-up delay-2 grid gap-5 xl:grid-cols-2">
-        {prospectScoreResult && (
-          <OpportunityPanel
-            painMetricName={opportunityData.painMetricName}
-            painMetricLabel={opportunityData.painMetricLabel}
-            painMetricValue={opportunityData.painMetricValue}
-            sectorAvgPainMetric={opportunityData.sectorAvgPainMetric}
-            sectorBestPainMetric={opportunityData.sectorBestPainMetric}
-            automationSavings={opportunityData.automationSavings}
-            prospectScore={prospectScoreResult}
-            sector={company.sector}
-          />
+        {/* Row 4: Insight callout + use-case pills */}
+        {(hookSentence || useCases.length > 0) && (
+          <div className="rounded-sm border-l-2 border-primary/40 bg-muted/50 px-4 py-2.5">
+            {hookSentence && (
+              <p className="text-xs leading-relaxed text-foreground/80">
+                {hookSentence}
+              </p>
+            )}
+            {useCases.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {useCases.map((uc) => (
+                  <Link key={uc.id} href={`/opportunities?useCase=${uc.id}`}>
+                    <Badge
+                      variant="secondary"
+                      className="rounded-sm font-mono text-[10px] uppercase hover:bg-accent cursor-pointer px-1.5 py-0"
+                    >
+                      {uc.name}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         )}
-        <MetricCharts timeseries={timeseries} sector={company.sector} />
       </div>
 
-      {/* Peer Comparison (horizontal bar chart only) */}
-      <div className="animate-fade-up delay-3">
-        <PeerComparison comparisons={peerComparisons} ticker={company.ticker} />
-      </div>
+      {/* ── THE STORY: 2 cards ── */}
+      <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+        {/* Card A: Where's the Pain? */}
+        <Card className="rounded-sm terminal-surface">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-sm">Where&apos;s the Pain?</CardTitle>
+            <p className="text-[11px] text-muted-foreground">
+              {PAIN_CHART_SUBTITLE[company.sector] ?? "Key pain metric trend."}
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 pb-3" style={{ height: 196 }}>
+            <PainChart
+              timeseries={timeseries}
+              sector={company.sector}
+              sectorAvgCombinedRatio={sectorAvgsRecord["combined_ratio"] ?? null}
+              sectorAvgMLR={sectorAvgsRecord["medical_loss_ratio"] ?? null}
+              sectorAvgROE={sectorAvgsRecord["roe"] ?? null}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Financial Data (collapsed accordion) */}
-      <div className="animate-fade-up delay-3">
-        <FinancialTable
-          annualData={annualFinancials}
-          quarterlyData={quarterlyFinancials}
-          years={financialYears}
-          quarterlyPeriods={quarterlyPeriods}
+        {/* Card B: Efficiency vs. Peers */}
+        <OpportunityPanel
+          painMetricName={opportunityData.painMetricName}
+          painMetricLabel={opportunityData.painMetricLabel}
+          painMetricValue={opportunityData.painMetricValue}
+          sectorAvgPainMetric={opportunityData.sectorAvgPainMetric}
+          sectorBestPainMetric={opportunityData.sectorBestPainMetric}
+          automationSavings={opportunityData.automationSavings}
         />
       </div>
+
+      {/* ── PROSPECT SCORE BREAKDOWN ── */}
+      {prospectScoreResult && (
+        <ProspectScoreCard prospectScore={prospectScoreResult} />
+      )}
+
+      {/* ── SIGNALS ROW ── */}
+      <SignalsRow techSignal={latestTech} />
     </div>
   );
 }

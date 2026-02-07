@@ -34,6 +34,16 @@ const sectorAccent: Record<Sector, { border: string; spark: string; gradient: st
     spark: "hsl(347 77% 50%)",
     gradient: "from-rose-500/[0.04]",
   },
+  Title: {
+    border: "border-l-teal-500",
+    spark: "hsl(175 70% 41%)",
+    gradient: "from-teal-500/[0.04]",
+  },
+  "Mortgage Insurance": {
+    border: "border-l-indigo-500",
+    spark: "hsl(239 84% 67%)",
+    gradient: "from-indigo-500/[0.04]",
+  },
 };
 
 export interface OpportunityMetricDisplay {
@@ -107,8 +117,8 @@ export function SectorOpportunityCard({
               <Sparkline
                 data={sparklineTrend}
                 color={accent.spark}
-                height={36}
-                width={80}
+                height={44}
+                width={96}
               />
             )}
           </div>
@@ -122,7 +132,7 @@ export function SectorOpportunityCard({
                 <DeltaIndicator metricName={metric1.name} delta={metric1.delta} />
               </p>
               {metric1.interpretation && (
-                <p className="text-[10px] leading-snug text-muted-foreground mt-0.5">
+                <p className="text-[11px] leading-snug text-muted-foreground mt-0.5">
                   {metric1.interpretation}
                 </p>
               )}
@@ -136,7 +146,7 @@ export function SectorOpportunityCard({
                 <DeltaIndicator metricName={metric2.name} delta={metric2.delta} />
               </p>
               {metric2.interpretation && (
-                <p className="text-[10px] leading-snug text-muted-foreground mt-0.5">
+                <p className="text-[11px] leading-snug text-muted-foreground mt-0.5">
                   {metric2.interpretation}
                 </p>
               )}

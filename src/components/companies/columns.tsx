@@ -107,7 +107,7 @@ export const columns: ColumnDef<CompanyListItem>[] = [
       >
         <span className="flex flex-col items-start leading-tight">
           <span>Premiums</span>
-          <span className="text-[10px] font-normal text-muted-foreground">FY latest</span>
+          <span className="text-[11px] font-normal text-muted-foreground">FY latest</span>
         </span>
         <ArrowUpDown className="ml-1 h-3 w-3" />
       </Button>

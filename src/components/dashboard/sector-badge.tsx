@@ -10,6 +10,10 @@ const sectorColors: Record<Sector, string> = {
     "bg-amber-500/10 text-amber-700 border-amber-200 dark:text-amber-400 dark:border-amber-800",
   Brokers:
     "bg-rose-500/10 text-rose-700 border-rose-200 dark:text-rose-400 dark:border-rose-800",
+  Title:
+    "bg-teal-500/10 text-teal-700 border-teal-200 dark:text-teal-400 dark:border-teal-800",
+  "Mortgage Insurance":
+    "bg-indigo-500/10 text-indigo-700 border-indigo-200 dark:text-indigo-400 dark:border-indigo-800",
 };
 
 export function SectorBadge({

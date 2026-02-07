@@ -8,7 +8,7 @@ import {
 } from "@/lib/metrics/calculator";
 import { getCompaniesNeedingRefresh } from "@/lib/queries/companies";
 
-const BATCH_SIZE = 8;
+const BATCH_SIZE = 12;
 
 export const maxDuration = 60;
 

@@ -124,7 +124,7 @@ export function computeBuyerSignals(
 
     // 2. Efficiency worsening — expense ratio or combined ratio rising while sector holds/improves
     const efficiencyMetrics =
-      company.sector === "P&C" || company.sector === "Reinsurance"
+      company.sector === "P&C" || company.sector === "Reinsurance" || company.sector === "Mortgage Insurance"
         ? ["expense_ratio", "combined_ratio"]
         : company.sector === "Health"
           ? ["medical_loss_ratio"]
@@ -165,7 +165,7 @@ export function computeBuyerSignals(
     }
 
     // 3. Crossed 100% — combined ratio crossed above 100%
-    if (company.sector === "P&C" || company.sector === "Reinsurance") {
+    if (company.sector === "P&C" || company.sector === "Reinsurance" || company.sector === "Mortgage Insurance") {
       const crTs = companyTs.combined_ratio;
       const { current, prior } = getLatestTwoYears(crTs);
       if (current != null && prior != null && current > 100 && prior <= 100) {
@@ -179,7 +179,7 @@ export function computeBuyerSignals(
 
     // 4. Growth decelerating — premium growth slowed YoY
     const growthMetric =
-      company.sector === "Brokers" ? "revenue" : "net_premiums_earned";
+      company.sector === "Brokers" || company.sector === "Title" ? "revenue" : "net_premiums_earned";
     const growthTs = companyTs[growthMetric];
     if (growthTs && growthTs.length >= 3) {
       const sorted = [...growthTs].sort((a, b) => a.fiscal_year - b.fiscal_year);

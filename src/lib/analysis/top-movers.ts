@@ -20,6 +20,8 @@ const SECTOR_PAIN_METRIC: Record<Sector, { metric: string; label: string; invert
   Health: { metric: "medical_loss_ratio", label: "MLR", invertDirection: false },
   Life: { metric: "roe", label: "ROE", invertDirection: true }, // declining ROE = deteriorating
   Brokers: { metric: "roe", label: "ROE", invertDirection: true },
+  Title: { metric: "roe", label: "ROE", invertDirection: true }, // similar to Brokers/Life
+  "Mortgage Insurance": { metric: "combined_ratio", label: "Combined Ratio", invertDirection: false }, // similar to P&C
 };
 
 export function computeTopMovers(

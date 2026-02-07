@@ -18,6 +18,11 @@ import { ExportButtonGroup } from "@/components/ui/export-button-group";
 import { generateCSV, downloadCSV } from "@/lib/export/csv";
 import { copyTableToClipboard } from "@/lib/export/clipboard";
 import { type Sector } from "@/types/database";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -53,6 +58,16 @@ interface SectorColumnDef {
   accent?: "destructive" | "teal";
   formatAsCurrency?: boolean;
 }
+
+const TREND_METRIC_LABELS: Record<Sector, string> = {
+  "P&C": "Combined Ratio",
+  Reinsurance: "Combined Ratio",
+  Health: "Medical Loss Ratio",
+  Life: "ROE",
+  Brokers: "ROE",
+  Title: "ROE",
+  "Mortgage Insurance": "Combined Ratio",
+};
 
 const SECTOR_TABLE: Record<Sector, {
   description: string;
@@ -109,6 +124,26 @@ const SECTOR_TABLE: Record<Sector, {
       { label: "Net Income", metricName: "net_income", getValue: (t) => t.netIncome },
     ],
   },
+  Title: {
+    description: "Ranked by ROE (lowest first). Title insurers are revenue-driven with low capital intensity — efficiency drives shareholder returns.",
+    sortNote: "Lowest ROE first",
+    cols: [
+      { label: "ROE", metricName: "roe", getValue: (t) => t.roe },
+      { label: "Revenue", metricName: "revenue", getValue: (t) => t.revenue },
+      { label: "Net Income", metricName: "net_income", getValue: (t) => t.netIncome },
+      { label: "D/E", metricName: "debt_to_equity", getValue: (t) => t.debtToEquity },
+    ],
+  },
+  "Mortgage Insurance": {
+    description: "Ranked by combined ratio (worst first). Mortgage insurers with elevated combined ratios are prime targets for claims automation and expense reduction.",
+    sortNote: "Worst combined ratio first",
+    cols: [
+      { label: "Combined", metricName: "combined_ratio", getValue: (t) => t.combinedRatio, accent: "destructive" },
+      { label: "Expense", metricName: "expense_ratio", getValue: (t) => t.expenseRatio },
+      { label: "ROE", metricName: "roe", getValue: (t) => t.roe },
+      { label: "Expense Gap $", metricName: "expense_ratio", description: "Dollar value of the expense ratio gap vs best-in-class.", getValue: (t) => t.automationSavings, accent: "teal", formatAsCurrency: true },
+    ],
+  },
 };
 
 export function DisruptionTargetsTable({
@@ -121,7 +156,7 @@ export function DisruptionTargetsTable({
   const formatColValue = useCallback(
     (col: SectorColumnDef, t: DisruptionTarget): string => {
       const v = col.getValue(t);
-      if (v == null) return "N/A";
+      if (v == null) return col.formatAsCurrency ? "Leader" : "N/A";
       if (col.formatAsCurrency) return formatCurrency(v);
       return formatMetricValue(col.metricName, v);
     },
@@ -164,7 +199,7 @@ export function DisruptionTargetsTable({
 
   return (
     <Card className="rounded-sm shadow-sm group">
-      <CardHeader className="pb-1">
+      <CardHeader className="pb-1 pt-4">
         <div className="flex items-baseline gap-3 flex-wrap">
           <CardTitle className="text-2xl font-display tracking-tight">
             <span className="font-mono text-primary/40 mr-1">&gt;</span>
@@ -184,14 +219,14 @@ export function DisruptionTargetsTable({
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-secondary/80">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-8 font-mono text-[10px] uppercase tracking-[0.15em]">#</TableHead>
-                <TableHead className="font-mono text-[10px] uppercase tracking-[0.15em]">Company</TableHead>
-                <TableHead className="font-mono text-[10px] uppercase tracking-[0.15em] w-14">Score</TableHead>
+                <TableHead className="w-8 font-mono text-[11px] uppercase tracking-[0.12em]">#</TableHead>
+                <TableHead className="font-mono text-[11px] uppercase tracking-[0.12em]">Company</TableHead>
+                <TableHead className="font-mono text-[11px] uppercase tracking-[0.12em] w-14">Score</TableHead>
                 {config.cols.map((col, ci) => (
                   <TableHead
                     key={ci}
                     className={cn(
-                      "text-right font-mono text-[10px] uppercase tracking-[0.15em]",
+                      "text-right font-mono text-[11px] uppercase tracking-[0.12em]",
                       col.accent === "teal" && "text-teal-600 dark:text-teal-400"
                     )}
                   >
@@ -200,15 +235,24 @@ export function DisruptionTargetsTable({
                       label={col.label}
                       description={col.description}
                       className={cn(
-                        "font-mono text-[10px] uppercase tracking-[0.15em] justify-end",
+                        "font-mono text-[11px] uppercase tracking-[0.12em] justify-end",
                         col.accent === "teal" && "text-teal-600 dark:text-teal-400"
                       )}
-                      iconClassName="h-2.5 w-2.5"
+                      iconClassName="h-3 w-3"
                     />
                   </TableHead>
                 ))}
-                <TableHead className="font-mono text-[10px] uppercase tracking-[0.15em] hidden lg:table-cell">Buyer Signal</TableHead>
-                <TableHead className="text-right font-mono text-[10px] uppercase tracking-[0.15em] w-20">Trend</TableHead>
+                <TableHead className="font-mono text-[11px] uppercase tracking-[0.12em] hidden lg:table-cell">Buyer Signal</TableHead>
+                <TableHead className="text-right font-mono text-[11px] uppercase tracking-[0.12em] w-20">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help border-b border-dashed border-muted-foreground/40">Trend</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">{TREND_METRIC_LABELS[sector]} over available fiscal years (FY2021–FY2024)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -271,7 +315,9 @@ export function DisruptionTargetsTable({
                             )}
                             <span className="relative">
                               {col.formatAsCurrency
-                                ? (val != null ? formatCurrency(val) : "—")
+                                ? (val != null
+                                  ? formatCurrency(val)
+                                  : <span className="text-[11px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Leader</span>)
                                 : formatMetricValue(col.metricName, val)}
                             </span>
                           </span>
@@ -280,7 +326,7 @@ export function DisruptionTargetsTable({
                     })}
                     <TableCell className="hidden lg:table-cell">
                       {t.signalTag ? (
-                        <span className="text-[11px] leading-tight text-muted-foreground line-clamp-1">
+                        <span className="text-xs leading-tight text-muted-foreground line-clamp-1">
                           {t.signalTag}
                         </span>
                       ) : (

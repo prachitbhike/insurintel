@@ -42,25 +42,25 @@ export const SECTORS: SectorInfo[] = [
     ai_opportunities: [],
     hero_stats: [
       {
-        title: "Sector Premiums",
+        title: "Premiums",
         metricName: "net_premiums_earned",
         aggregation: "sum",
         tooltip: "Total net premiums earned across P&C insurers",
       },
       {
-        title: "Avg Combined Ratio",
+        title: "Combined",
         metricName: "combined_ratio",
         aggregation: "avg",
         tooltip: "Average combined ratio — below 100% means underwriting profit",
       },
       {
-        title: "Avg Expense Ratio",
+        title: "Expense",
         metricName: "expense_ratio",
         aggregation: "avg",
         tooltip: "Average expense ratio across P&C insurers",
       },
       {
-        title: "Best-to-Worst Spread",
+        title: "Spread",
         metricName: "expense_ratio",
         aggregation: "spread",
         tooltip: "Gap between the most and least efficient insurer in the sector",
@@ -84,11 +84,12 @@ export const SECTORS: SectorInfo[] = [
       "roa",
       "book_value_per_share",
       "total_assets",
+      "investment_income",
     ],
     ai_opportunities: [],
     hero_stats: [
       {
-        title: "Total Assets",
+        title: "Assets",
         metricName: "total_assets",
         aggregation: "sum",
         tooltip: "Combined assets under management across Life insurers",
@@ -100,13 +101,13 @@ export const SECTORS: SectorInfo[] = [
         tooltip: "Average return on equity — how efficiently capital generates profit",
       },
       {
-        title: "Total Net Income",
+        title: "Net Income",
         metricName: "net_income",
         aggregation: "sum",
         tooltip: "Combined profit pool across Life insurers",
       },
       {
-        title: "Avg Book Value/Share",
+        title: "Book Value",
         metricName: "book_value_per_share",
         aggregation: "avg",
         tooltip: "Average book value per share — equity tied up per share",
@@ -134,19 +135,19 @@ export const SECTORS: SectorInfo[] = [
     ai_opportunities: [],
     hero_stats: [
       {
-        title: "Sector Revenue",
+        title: "Revenue",
         metricName: "revenue",
         aggregation: "sum",
         tooltip: "Total revenue across Health insurers",
       },
       {
-        title: "Avg Medical Loss Ratio",
+        title: "Avg MLR",
         metricName: "medical_loss_ratio",
         aggregation: "avg",
         tooltip: "ACA requires 80-85% MLR floor — admin margin is what's left",
       },
       {
-        title: "Total Net Income",
+        title: "Net Income",
         metricName: "net_income",
         aggregation: "sum",
         tooltip: "Combined profit pool across Health insurers",
@@ -173,6 +174,7 @@ export const SECTORS: SectorInfo[] = [
     key_metrics: [
       "combined_ratio",
       "loss_ratio",
+      "expense_ratio",
       "net_premiums_earned",
       "roe",
       "book_value_per_share",
@@ -180,19 +182,19 @@ export const SECTORS: SectorInfo[] = [
     ai_opportunities: [],
     hero_stats: [
       {
-        title: "Sector Premiums",
+        title: "Premiums",
         metricName: "net_premiums_earned",
         aggregation: "sum",
         tooltip: "Total net premiums earned across reinsurers",
       },
       {
-        title: "Avg Combined Ratio",
+        title: "Combined",
         metricName: "combined_ratio",
         aggregation: "avg",
         tooltip: "Average combined ratio — underwriting discipline benchmark",
       },
       {
-        title: "Avg Loss Ratio",
+        title: "Loss Ratio",
         metricName: "loss_ratio",
         aggregation: "avg",
         tooltip: "Average loss ratio — quality of risk selection",
@@ -220,7 +222,7 @@ export const SECTORS: SectorInfo[] = [
     ai_opportunities: [],
     hero_stats: [
       {
-        title: "Sector Revenue",
+        title: "Revenue",
         metricName: "revenue",
         aggregation: "sum",
         tooltip: "Total revenue (commissions + fees) across brokers",
@@ -232,13 +234,13 @@ export const SECTORS: SectorInfo[] = [
         tooltip: "Average return on equity across brokers",
       },
       {
-        title: "Total Net Income",
+        title: "Net Income",
         metricName: "net_income",
         aggregation: "sum",
         tooltip: "Combined profit pool across brokers",
       },
       {
-        title: "Avg Debt-to-Equity",
+        title: "Avg D/E",
         metricName: "debt_to_equity",
         aggregation: "avg",
         tooltip: "Average leverage ratio — acquisition-fueled debt",
@@ -247,6 +249,100 @@ export const SECTORS: SectorInfo[] = [
     opportunity_metrics: [
       { metric: "roe", label: "ROE" },
       { metric: "revenue", label: "Revenue" },
+    ],
+  },
+  {
+    name: "Title",
+    slug: "title",
+    label: "Title Insurance",
+    description:
+      "Companies providing title search, insurance, and settlement services for real estate transactions.",
+    color: "bg-teal-500",
+    key_metrics: [
+      "revenue",
+      "net_income",
+      "roe",
+      "roa",
+      "eps",
+      "total_assets",
+    ],
+    ai_opportunities: [],
+    hero_stats: [
+      {
+        title: "Revenue",
+        metricName: "revenue",
+        aggregation: "sum",
+        tooltip: "Total revenue across title insurers",
+      },
+      {
+        title: "Avg ROE",
+        metricName: "roe",
+        aggregation: "avg",
+        tooltip: "Average return on equity across title insurers",
+      },
+      {
+        title: "Net Income",
+        metricName: "net_income",
+        aggregation: "sum",
+        tooltip: "Combined profit pool across title insurers",
+      },
+      {
+        title: "Avg ROA",
+        metricName: "roa",
+        aggregation: "avg",
+        tooltip: "Average return on assets across title insurers",
+      },
+    ],
+    opportunity_metrics: [
+      { metric: "roe", label: "ROE" },
+      { metric: "revenue", label: "Revenue" },
+    ],
+  },
+  {
+    name: "Mortgage Insurance",
+    slug: "mortgage-insurance",
+    label: "Mortgage Insurance",
+    description:
+      "Companies providing private mortgage insurance that protects lenders against borrower default.",
+    color: "bg-indigo-500",
+    key_metrics: [
+      "combined_ratio",
+      "loss_ratio",
+      "expense_ratio",
+      "net_income",
+      "roe",
+      "book_value_per_share",
+    ],
+    ai_opportunities: [],
+    hero_stats: [
+      {
+        title: "Net Income",
+        metricName: "net_income",
+        aggregation: "sum",
+        tooltip: "Combined profit pool across MI companies",
+      },
+      {
+        title: "Avg ROE",
+        metricName: "roe",
+        aggregation: "avg",
+        tooltip: "Average return on equity across MI companies",
+      },
+      {
+        title: "Loss Ratio",
+        metricName: "loss_ratio",
+        aggregation: "avg",
+        tooltip: "Average loss ratio across MI companies",
+      },
+      {
+        title: "Combined",
+        metricName: "combined_ratio",
+        aggregation: "avg",
+        tooltip: "Average combined ratio across MI companies",
+      },
+    ],
+    opportunity_metrics: [
+      { metric: "expense_ratio", label: "Expense Ratio" },
+      { metric: "roe", label: "ROE" },
     ],
   },
 ];

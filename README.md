@@ -84,7 +84,7 @@ These are expected behaviors, not bugs:
 | AIZ | Loss ratio ~28% | Heavy reinsurance ceding (net vs gross basis) |
 | BRK.B | Only ~7 metrics | Conglomerate XBRL doesn't map to insurance-specific tags |
 | ERIE | Missing underwriting metrics | Management company structure, not an underwriter |
-| AON, AJG | Missing `revenue` | XBRL concept tags don't match current aliases |
+| RYAN | Missing EPS/shares | UP-C structure — no standard XBRL tags |
 | Various | Revenue < premiums | GAAP reporting difference, not an error |
 
 ## Project Structure

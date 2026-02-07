@@ -15,6 +15,8 @@ const SECTOR_COLORS: Record<Sector, string> = {
   Health: "violet",
   Reinsurance: "amber",
   Brokers: "rose",
+  Title: "teal",
+  "Mortgage Insurance": "indigo",
 };
 
 export function computeSectorTAMs(data: BulkScoringData): SectorTAM[] {
@@ -132,6 +134,48 @@ export function computeSectorTAMs(data: BulkScoringData): SectorTAM[] {
     tam: brokerTam,
     description: "ROE gap vs sector average",
     color: SECTOR_COLORS.Brokers,
+  });
+
+  // Title: ROE gap — same approach as Life/Brokers. Revenue-driven, low capital intensity.
+  const titleCompanies = bySector.get("Title") ?? [];
+  const titleAvgROE = data.sectorAverages.Title?.roe?.avg ?? null;
+  let titleTam = 0;
+  for (const c of titleCompanies) {
+    const roe = data.latestMetrics[c.id]?.roe;
+    const ni = data.latestMetrics[c.id]?.net_income;
+    if (roe != null && ni != null && titleAvgROE != null && roe < titleAvgROE && roe > 0) {
+      const equity = ni / (roe / 100);
+      titleTam += ((titleAvgROE - roe) / 100) * equity;
+    }
+  }
+  result.push({
+    sector: "Title",
+    label: "Title Insurance",
+    tam: titleTam,
+    description: "ROE efficiency gap vs leaders",
+    color: SECTOR_COLORS.Title,
+  });
+
+  // Mortgage Insurance: expense gap — same approach as P&C/Reinsurance (UW ratios apply).
+  const miCompanies = bySector.get("Mortgage Insurance") ?? [];
+  const miBestER = miCompanies.reduce((best, c) => {
+    const er = data.latestMetrics[c.id]?.expense_ratio;
+    return er != null && (best == null || er < best) ? er : best;
+  }, null as number | null);
+  let miTam = 0;
+  for (const c of miCompanies) {
+    const er = data.latestMetrics[c.id]?.expense_ratio;
+    const npe = data.latestMetrics[c.id]?.net_premiums_earned;
+    if (er != null && npe != null && miBestER != null && er > miBestER) {
+      miTam += ((er - miBestER) / 100) * npe;
+    }
+  }
+  result.push({
+    sector: "Mortgage Insurance",
+    label: "Mortgage Insurance",
+    tam: miTam,
+    description: "Expense gap vs best-in-class",
+    color: SECTOR_COLORS["Mortgage Insurance"],
   });
 
   return result;

@@ -60,7 +60,7 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="outline"
-            className="hidden md:inline-flex h-7 w-52 justify-between rounded-sm bg-secondary/50 border-border font-mono text-[10px] text-muted-foreground"
+            className="hidden md:inline-flex h-7 w-52 justify-between rounded-sm bg-secondary/50 border-border font-mono text-[11px] text-muted-foreground"
             onClick={() => {
               document.dispatchEvent(
                 new KeyboardEvent("keydown", { key: "k", metaKey: true })
@@ -71,8 +71,8 @@ export function SiteHeader() {
               <Search className="h-3 w-3" />
               Search companies...
             </span>
-            <kbd className="pointer-events-none inline-flex h-4 select-none items-center gap-0.5 rounded-sm border bg-muted px-1 font-mono text-[9px] font-medium text-muted-foreground">
-              <span className="text-[10px]">&#8984;</span>K
+            <kbd className="pointer-events-none inline-flex h-4 select-none items-center gap-0.5 rounded-sm border bg-muted px-1 font-mono text-[10px] font-medium text-muted-foreground">
+              <span className="text-[11px]">&#8984;</span>K
             </kbd>
           </Button>
           <Button
@@ -119,7 +119,7 @@ export function SiteHeader() {
                 ))}
               </nav>
               <div className="mt-4 px-2">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Sector Filter</p>
+                <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Sector Filter</p>
                 <div className="overflow-x-auto">
                   <Suspense>
                     <SectorToggleGlobal />

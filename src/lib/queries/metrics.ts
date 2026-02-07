@@ -8,6 +8,27 @@ import {
 } from "@/types/database";
 import { type BulkScoringData } from "@/lib/scoring/types";
 
+/**
+ * Paginated fetch to work around Supabase's default 1000-row limit.
+ * Calls queryFn with (from, to) range offsets and concatenates results.
+ */
+async function paginatedFetch<T>(
+  queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  pageSize = 1000
+): Promise<T[]> {
+  const allData: T[] = [];
+  let offset = 0;
+  for (;;) {
+    const { data, error } = await queryFn(offset, offset + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allData.push(...data);
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+  return allData;
+}
+
 export async function getLatestMetrics(
   supabase: SupabaseClient,
   companyId?: string
@@ -87,17 +108,26 @@ export async function getIndustryTimeseries(
   supabase: SupabaseClient,
   metricNames: string[]
 ): Promise<IndustryTimeseriesRow[]> {
-  const [timeseriesRes, companiesRes] = await Promise.all([
-    supabase
-      .from("mv_metric_timeseries")
-      .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
-      .in("metric_name", metricNames)
-      .order("fiscal_year", { ascending: true })
-      .order("fiscal_quarter", { ascending: true }),
+  const [timeseriesData, companiesRes] = await Promise.all([
+    paginatedFetch<{
+      company_id: string;
+      ticker: string;
+      metric_name: string;
+      metric_value: number;
+      fiscal_year: number;
+      fiscal_quarter: number;
+    }>((from, to) =>
+      supabase
+        .from("mv_metric_timeseries")
+        .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
+        .in("metric_name", metricNames)
+        .order("fiscal_year", { ascending: true })
+        .order("fiscal_quarter", { ascending: true })
+        .range(from, to)
+    ),
     supabase.from("companies").select("id, sector"),
   ]);
 
-  if (timeseriesRes.error) throw timeseriesRes.error;
   if (companiesRes.error) throw companiesRes.error;
 
   const sectorMap = new Map<string, Sector>();
@@ -105,10 +135,65 @@ export async function getIndustryTimeseries(
     sectorMap.set(c.id, c.sector as Sector);
   }
 
-  return (timeseriesRes.data ?? []).map((row) => ({
+  return timeseriesData.map((row) => ({
     ...row,
     sector: sectorMap.get(row.company_id) ?? ("P&C" as Sector),
   }));
+}
+
+export async function getQuarterlyTimeseries(
+  supabase: SupabaseClient,
+  companyIds: string[],
+  metricNames: string[]
+): Promise<
+  {
+    company_id: string;
+    ticker: string;
+    metric_name: string;
+    metric_value: number;
+    fiscal_year: number;
+    fiscal_quarter: number;
+  }[]
+> {
+  return paginatedFetch((from, to) =>
+    supabase
+      .from("mv_metric_timeseries")
+      .select(
+        "company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter"
+      )
+      .in("company_id", companyIds)
+      .in("metric_name", metricNames)
+      .order("fiscal_year", { ascending: true })
+      .order("fiscal_quarter", { ascending: true })
+      .range(from, to)
+  );
+}
+
+/**
+ * Fetch latest metrics for all companies in a sector, filtered by metric names.
+ * Used for radar chart peer comparison on company detail pages.
+ */
+export async function getSectorPeerMetrics(
+  supabase: SupabaseClient,
+  sector: Sector,
+  metricNames: string[],
+): Promise<
+  {
+    company_id: string;
+    ticker: string;
+    name: string;
+    metric_name: string;
+    metric_value: number;
+  }[]
+> {
+  const { data, error } = await supabase
+    .from("mv_latest_metrics")
+    .select("company_id, ticker, name, metric_name, metric_value")
+    .eq("sector", sector)
+    .in("metric_name", metricNames);
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 const SCORING_METRICS = [
@@ -122,12 +207,17 @@ const SCORING_METRICS = [
   "revenue",
   "net_income",
   "total_assets",
+  "investment_income",
+  "eps",
+  "book_value_per_share",
+  "roa",
+  "premium_growth_yoy",
 ];
 
 export async function getBulkScoringData(
   supabase: SupabaseClient
 ): Promise<BulkScoringData> {
-  const [companiesRes, latestRes, sectorAvgsRes, tsRes] = await Promise.all([
+  const [companiesRes, latestRes, sectorAvgsRes, tsData] = await Promise.all([
     supabase
       .from("companies")
       .select("id, ticker, name, sector")
@@ -138,12 +228,21 @@ export async function getBulkScoringData(
       .select("company_id, ticker, name, sector, metric_name, metric_value")
       .in("metric_name", SCORING_METRICS),
     supabase.from("mv_sector_averages").select("*"),
-    supabase
-      .from("financial_metrics")
-      .select("company_id, metric_name, metric_value, fiscal_year")
-      .in("metric_name", SCORING_METRICS)
-      .eq("period_type", "annual")
-      .order("fiscal_year", { ascending: true }),
+    // Paginated: ~2,300 annual rows exceed Supabase default 1000-row limit
+    paginatedFetch<{
+      company_id: string;
+      metric_name: string;
+      metric_value: number;
+      fiscal_year: number;
+    }>((from, to) =>
+      supabase
+        .from("financial_metrics")
+        .select("company_id, metric_name, metric_value, fiscal_year")
+        .in("metric_name", SCORING_METRICS)
+        .eq("period_type", "annual")
+        .order("fiscal_year", { ascending: true })
+        .range(from, to)
+    ),
   ]);
 
   const companies = (companiesRes.data ?? []).map((c) => ({
@@ -173,7 +272,7 @@ export async function getBulkScoringData(
 
   // Build timeseries: companyId -> { metricName: [{ fiscal_year, value }] }
   const timeseries: BulkScoringData["timeseries"] = {};
-  for (const row of tsRes.data ?? []) {
+  for (const row of tsData) {
     const cid = row.company_id as string;
     if (!timeseries[cid]) timeseries[cid] = {};
     if (!timeseries[cid][row.metric_name]) timeseries[cid][row.metric_name] = [];

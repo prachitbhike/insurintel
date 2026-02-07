@@ -22,12 +22,12 @@ export const USE_CASES: UseCase[] = [
     description:
       "Claims handling and loss adjustment expenses. Companies with higher loss ratios have larger claims cost bases.",
     icon: "FileSearch",
-    applicableSectors: ["P&C", "Reinsurance"],
+    applicableSectors: ["P&C", "Reinsurance", "Mortgage Insurance"],
     painMetrics: ["loss_ratio", "combined_ratio"],
     signalMetrics: ["losses_incurred", "net_premiums_earned"],
     tamFormula: "loss_based",
     tamDescription:
-      "Gap between company loss ratio and sector best-in-class, applied to premium base",
+      "(Company loss ratio - sector minimum) / 100 x net premiums earned. Sector minimum used as best-in-class benchmark.",
     tags: ["claims"],
   },
   {
@@ -35,14 +35,14 @@ export const USE_CASES: UseCase[] = [
     name: "Underwriting Operations",
     shortName: "Underwriting",
     description:
-      "Risk selection, pricing, and policy issuance. Higher expense ratios relative to peers indicate operational inefficiency in underwriting processes.",
+      "Risk selection, pricing, and policy issuance. Higher expense ratios relative to peers indicate room for operational improvement in underwriting processes.",
     icon: "Brain",
-    applicableSectors: ["P&C", "Reinsurance", "Life"],
+    applicableSectors: ["P&C", "Reinsurance", "Life", "Mortgage Insurance"],
     painMetrics: ["expense_ratio", "combined_ratio"],
     signalMetrics: ["underwriting_expenses", "net_premiums_earned"],
     tamFormula: "expense_based",
     tamDescription:
-      "Gap between company expense ratio and sector best-in-class, applied to premium base",
+      "(Company expense ratio - sector minimum) / 100 x net premiums earned. Sector minimum used as best-in-class benchmark.",
     tags: ["underwriting", "pricing"],
   },
   {
@@ -57,7 +57,7 @@ export const USE_CASES: UseCase[] = [
     signalMetrics: ["revenue", "net_income"],
     tamFormula: "admin_based",
     tamDescription:
-      "Admin margin pool: (1 - MLR) applied to premium/revenue base",
+      "(1 - MLR/100) x premium base. Represents total admin margin pool (includes operations, overhead, and profit — not solely addressable technology spend).",
     tags: ["health", "admin"],
   },
   {
@@ -67,12 +67,12 @@ export const USE_CASES: UseCase[] = [
     description:
       "Policy lifecycle management — endorsements, renewals, and customer service. Part of the expense ratio that varies widely across peers.",
     icon: "FileText",
-    applicableSectors: ["P&C", "Life", "Health"],
+    applicableSectors: ["P&C", "Life", "Health", "Title", "Mortgage Insurance"],
     painMetrics: ["expense_ratio"],
     signalMetrics: ["net_premiums_earned", "revenue"],
     tamFormula: "expense_based",
     tamDescription:
-      "Portion of expense ratio gap attributable to servicing operations",
+      "(Company expense ratio - sector minimum) / 100 x net premiums earned. Represents total expense gap, not isolated to servicing alone.",
     tags: ["policy", "servicing"],
   },
   {
@@ -82,12 +82,12 @@ export const USE_CASES: UseCase[] = [
     description:
       "Regulatory reporting, filing compliance, and audit preparation. A component of operating expenses across all insurance sectors.",
     icon: "Scale",
-    applicableSectors: ["P&C", "Life", "Health", "Reinsurance", "Brokers"],
+    applicableSectors: ["P&C", "Life", "Health", "Reinsurance", "Brokers", "Title", "Mortgage Insurance"],
     painMetrics: ["expense_ratio"],
     signalMetrics: ["net_premiums_earned", "revenue"],
     tamFormula: "expense_based",
     tamDescription:
-      "Expense ratio gap applied to premium/revenue base",
+      "(Company expense ratio - sector minimum) / 100 x premium/revenue base. Represents total expense gap across all operating functions.",
     tags: ["compliance", "regulation", "reporting"],
   },
 ];

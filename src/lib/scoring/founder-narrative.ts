@@ -58,10 +58,12 @@ function getPainMetricName(sector: Sector): string {
   switch (sector) {
     case "P&C":
     case "Reinsurance":
+    case "Mortgage Insurance":
       return "combined_ratio";
     case "Health":
       return "medical_loss_ratio";
     case "Life":
+    case "Title":
       return "roe";
     case "Brokers":
       return "debt_to_equity";
@@ -109,15 +111,13 @@ function generateHookSentence(
   // Build the hook: "Company is [interpretation]"
   if (painMetric === "combined_ratio" && value > 100) {
     const gap = value - 100;
-    let hook = `${companyName} is losing $${gap.toFixed(2)} per $100 of premiums — their combined ratio of ${formatPercent(value, 1)} `;
+    let hook = `${companyName} has a combined ratio of ${formatPercent(value, 1)} — an underwriting loss of $${gap.toFixed(2)} per $100 of premiums`;
     if (premiums != null) {
       const losses = (gap / 100) * premiums;
-      hook += `translates to ${formatCurrency(losses)} in annual underwriting losses`;
-      if (premiums > 0) hook += ` on ${formatCurrency(premiums)} of premiums`;
-    } else {
-      hook += "indicates underwriting losses";
+      hook += ` (${formatCurrency(losses)} on ${formatCurrency(premiums)} of premiums)`;
     }
-    return hook + ".";
+    hook += ". Note: investment income may offset underwriting losses.";
+    return hook;
   }
 
   if (painMetric === "medical_loss_ratio") {
@@ -262,7 +262,7 @@ export function generateFounderNarrative(input: NarrativeInput): FounderNarrativ
         ? " with an improving trend"
         : "";
     sentences.push(
-      `Composite score: ${prospectScore.totalScore}/100 — ${tier} operational inefficiency${trendSuffix}.`
+      `Composite efficiency score: ${prospectScore.totalScore}/100 (${tier})${trendSuffix}.`
     );
   }
 

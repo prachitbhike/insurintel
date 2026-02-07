@@ -38,6 +38,18 @@ export const SECTOR_CHART_CONFIG: Record<Sector, SectorStoryConfig> = {
     description: "Debt-to-equity per broker. Higher leverage = more acquisition debt.",
     higherIsBetter: false,
   },
+  Title: {
+    title: "Capital Efficiency",
+    metric: "roe",
+    description: "Return on equity per title insurer. Higher ROE = more efficient capital deployment.",
+    higherIsBetter: true,
+  },
+  "Mortgage Insurance": {
+    title: "Underwriting Discipline",
+    metric: "combined_ratio",
+    description: "Combined ratio per MI company. Below 100% = underwriting profit.",
+    higherIsBetter: false,
+  },
 };
 
 export function getSectorStoryMetric(sectorName: Sector): string {

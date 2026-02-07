@@ -249,10 +249,10 @@ export function ProspectTable({ rows }: ProspectTableProps) {
                 <TableHead>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="cursor-help border-b border-dashed border-muted-foreground/40">Pain Point</span>
+                      <span className="cursor-help border-b border-dashed border-muted-foreground/40">Key Metric Gap</span>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">The metric where this company most underperforms vs. sector average</p>
+                      <p className="text-xs">The sector-relevant metric with the largest gap vs. sector average (min-max normalized within sector)</p>
                     </TooltipContent>
                   </Tooltip>
                 </TableHead>
@@ -361,9 +361,38 @@ export function ProspectTable({ rows }: ProspectTableProps) {
                       : "--"}
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm tabular-nums font-semibold">
-                    {row.addressableSpend != null
-                      ? formatCurrency(row.addressableSpend)
-                      : "--"}
+                    {row.addressableSpend != null ? (
+                      formatCurrency(row.addressableSpend)
+                    ) : row.sector === "Brokers" ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground/60 font-normal cursor-help">N/A</span>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs">
+                          <p className="text-xs">Brokers earn commissions, not premiums — no underwriting expense gap applies</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : row.sector === "Life" ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground/60 font-normal cursor-help">N/A</span>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs">
+                          <p className="text-xs">Life insurer expense structure differs from P&C underwriting ratio</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : row.sector === "Title" ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground/60 font-normal cursor-help">N/A</span>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs">
+                          <p className="text-xs">Title insurers have different economics — no underwriting expense gap applies</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      "--"
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

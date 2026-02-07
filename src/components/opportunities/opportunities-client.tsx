@@ -32,7 +32,7 @@ interface OpportunitiesClientProps {
 const chartConfig = {
   addressableSpend: {
     label: "Expense Gap $",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
 
@@ -104,8 +104,10 @@ export function OpportunitiesClient({ rows }: OpportunitiesClientProps) {
                 />
                 <Bar
                   dataKey="addressableSpend"
-                  fill="var(--color-addressableSpend)"
-                  radius={[0, 6, 6, 0]}
+                  fill="var(--chart-1)"
+                  radius={[0, 2, 2, 0]}
+                  maxBarSize={28}
+                  isAnimationActive={false}
                 />
               </BarChart>
             </ChartContainer>

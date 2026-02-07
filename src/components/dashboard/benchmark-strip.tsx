@@ -34,13 +34,13 @@ export function BenchmarkStrip({ benchmarks }: BenchmarkStripProps) {
             key={b.label}
             className="bg-card px-4 py-4 space-y-1.5"
           >
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              <MetricLabel metricName={b.metricName} label={b.label} className="text-[10px]" iconClassName="h-2.5 w-2.5" />
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <MetricLabel metricName={b.metricName} label={b.label} className="text-[11px]" iconClassName="h-3 w-3" />
             </p>
             <p className="text-2xl font-mono tabular-nums font-semibold tracking-tight">
               {formatMetricValue(b.metricName, b.value)}
             </p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               <span className="font-medium text-foreground/70">{b.companyTicker}</span>
               {b.companyName && (
                 <span className="hidden sm:inline"> · {b.companyName}</span>

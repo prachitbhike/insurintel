@@ -71,7 +71,12 @@ export async function getSectorOverviews(
         companyCount: row.company_count,
       });
     }
-    sectorMap.get(row.sector)!.averages[row.metric_name] = row.avg_value;
+    const entry = sectorMap.get(row.sector)!;
+    entry.averages[row.metric_name] = row.avg_value;
+    // Use MAX company_count across all metrics for this sector
+    if (row.company_count > entry.companyCount) {
+      entry.companyCount = row.company_count;
+    }
   }
 
   return Array.from(sectorMap.values());

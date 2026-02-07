@@ -40,7 +40,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function scoreToColor(score: number | null): string {
-  if (score == null) return "hsl(var(--muted-foreground))";
+  if (score == null) return "var(--muted-foreground)";
   if (score >= 70) return "var(--positive)";
   if (score >= 40) return "hsl(45 93% 47%)";
   return "var(--negative)";
@@ -66,7 +66,7 @@ function CustomDot(props: Record<string, unknown>) {
         x={cx}
         y={cy - r - 4}
         textAnchor="middle"
-        className="fill-foreground text-[10px] font-mono font-medium"
+        className="fill-foreground text-[11px] font-mono font-medium"
       >
         {payload.ticker}
       </text>
@@ -102,7 +102,7 @@ export function LifeBubbleChart({ data, avgAssets, avgRoe }: LifeBubbleChartProp
           dataKey="totalAssets"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           tickFormatter={(v: number) => formatCurrency(v)}
         >
           <Label value="Total Assets" position="bottom" offset={0} className="text-[11px] fill-muted-foreground" />
@@ -112,7 +112,7 @@ export function LifeBubbleChart({ data, avgAssets, avgRoe }: LifeBubbleChartProp
           dataKey="roe"
           tickLine={false}
           axisLine={false}
-          className="text-[10px] fill-muted-foreground"
+          className="text-[11px] fill-muted-foreground"
           tickFormatter={(v: number) => `${v.toFixed(0)}%`}
         >
           <Label value="ROE (%)" angle={-90} position="insideLeft" offset={10} className="text-[11px] fill-muted-foreground" />

@@ -48,7 +48,7 @@ export function KpiCard({
   return (
     <Card className={cn("relative border-l-[3px] rounded-sm card-glow terminal-surface", borderColor, className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        <CardTitle className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
           {title}
         </CardTitle>
         {tooltip && (
