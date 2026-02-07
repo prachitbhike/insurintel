@@ -427,7 +427,7 @@ export function BuyerLandscapeTable({
                     )}
                   </TableCell>
 
-                  {/* Prospect Score */}
+                  {/* Efficiency Score */}
                   <TableCell className="text-center">
                     <ScoreBadge score={c.prospectScore} size="sm" />
                   </TableCell>

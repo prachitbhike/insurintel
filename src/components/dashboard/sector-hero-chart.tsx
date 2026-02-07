@@ -31,7 +31,7 @@ const CHART_META: Record<
   "life-bubble": {
     title: "Capital Efficiency Map",
     description:
-      "Assets vs ROE. Bubble size = net income. Color = prospect score.",
+      "Assets vs ROE. Bubble size = net income. Color = efficiency score.",
   },
   "reinsurance-radar": {
     title: "Discipline Radar",

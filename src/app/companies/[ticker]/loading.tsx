@@ -28,7 +28,7 @@ export default function CompanyDetailLoading() {
         <Skeleton className="h-[240px] rounded-sm" />
       </div>
 
-      {/* Prospect Score */}
+      {/* Efficiency Score */}
       <Skeleton className="h-[130px] rounded-sm" />
 
       {/* Signals */}

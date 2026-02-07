@@ -1,10 +1,8 @@
 import { type SectorInfo } from "@/lib/data/sectors";
 import { type Sector } from "@/types/database";
 import { HeroBenchmarksV2, type HeroMetric } from "./hero-benchmarks-v2";
-import { TopProspectsSection, type TopProspect } from "./top-prospects-section";
-import { SectorTrendCharts, type SectorTrendData } from "@/components/sectors/sector-trend-charts";
-import { PCMarketPulseDashboard } from "./pc-market-pulse/pc-market-pulse-dashboard";
-import { type PCDashboardData } from "@/lib/queries/pc-dashboard";
+import { SectorMarketPulseDashboard } from "./sector-market-pulse/sector-market-pulse-dashboard";
+import { type SectorDashboardData } from "@/lib/queries/sector-dashboard";
 import { cn } from "@/lib/utils";
 
 const SECTOR_TAGLINES: Record<Sector, string> = {
@@ -30,23 +28,14 @@ const SECTOR_ACCENT: Record<Sector, string> = {
 interface SectorDashboardProps {
   sector: SectorInfo;
   heroMetrics: HeroMetric[];
-  topProspects: TopProspect[];
-  sectorTrendData: SectorTrendData;
-  quarterlyTrendData: SectorTrendData;
-  sectorTickers: string[];
-  pcDashboardData?: PCDashboardData | null;
+  sectorDashboardData: SectorDashboardData;
 }
 
 export function SectorDashboard({
   sector,
   heroMetrics,
-  topProspects,
-  sectorTrendData,
-  quarterlyTrendData,
-  sectorTickers,
-  pcDashboardData,
+  sectorDashboardData,
 }: SectorDashboardProps) {
-  const isPCsector = sector.name === "P&C" && pcDashboardData != null;
   return (
     <div className="min-h-screen">
       {/* Sector Hero Banner + KPI Strip */}
@@ -64,11 +53,7 @@ export function SectorDashboard({
               </p>
               <h1 className="text-2xl font-display tracking-tight md:text-3xl">
                 <span className="font-mono text-primary/40 mr-1">&gt;</span>
-                {sector.name === "P&C"
-                  ? "P&C Market Pulse"
-                  : sector.name === "Reinsurance"
-                  ? "Reinsurance Market Pulse"
-                  : `${sector.label} Market Pulse`}
+                {`${sector.label} Market Pulse`}
               </h1>
               <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
                 {SECTOR_TAGLINES[sector.name]}
@@ -83,30 +68,13 @@ export function SectorDashboard({
 
       {/* Main Content */}
       <div className="container px-4 md:px-6">
-        {isPCsector ? (
-          <section className="py-5 animate-fade-up delay-1">
-            <PCMarketPulseDashboard dashboardData={pcDashboardData!} />
-          </section>
-        ) : (
-          <section className="py-5 animate-fade-up delay-1">
-            <div className="grid gap-4 lg:grid-cols-[1fr_320px] items-start">
-              {/* Left: Sector Analysis (3-tab) */}
-              <div>
-                <SectorTrendCharts
-                  trendData={sectorTrendData}
-                  quarterlyTrendData={quarterlyTrendData}
-                  availableMetrics={sector.key_metrics}
-                  tickers={sectorTickers}
-                  sector={sector.name}
-                />
-              </div>
-              {/* Right: Top Prospects */}
-              <div>
-                <TopProspectsSection prospects={topProspects} compact />
-              </div>
-            </div>
-          </section>
-        )}
+        <section className="py-5 animate-fade-up delay-1">
+          <SectorMarketPulseDashboard
+            sectorName={sector.name}
+            sectorLabel={sector.label}
+            dashboardData={sectorDashboardData}
+          />
+        </section>
       </div>
     </div>
   );

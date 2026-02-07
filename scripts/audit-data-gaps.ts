@@ -78,6 +78,19 @@ const SECTOR_EXPECTED: Record<string, string[]> = {
     "eps", "shares_outstanding", "total_debt", "revenue",
     "roe", "roa", "book_value_per_share", "debt_to_equity",
   ],
+  "Title": [
+    "net_income", "stockholders_equity", "total_assets", "total_liabilities",
+    "eps", "shares_outstanding", "total_debt", "revenue",
+    "roe", "roa", "book_value_per_share", "debt_to_equity",
+  ],
+  "Mortgage Insurance": [
+    "net_premiums_earned", "losses_incurred", "acquisition_costs", "underwriting_expenses",
+    "net_income", "stockholders_equity", "total_assets", "total_liabilities",
+    "eps", "shares_outstanding", "investment_income", "total_debt",
+    "loss_ratio", "expense_ratio", "combined_ratio",
+    "roe", "roa", "book_value_per_share", "debt_to_equity",
+    "premium_growth_yoy",
+  ],
 };
 
 // ========== Derived metric dependencies ==========
@@ -205,6 +218,74 @@ const KNOWN_EXCEPTIONS: KnownException[] = [
   { sector: "Brokers", metric: "acquisition_costs", reason: "Brokers are distributors, not carriers" },
   { sector: "Brokers", metric: "underwriting_expenses", reason: "Brokers are distributors, not carriers" },
   { sector: "Brokers", metric: "investment_income", reason: "Brokers are distributors, not carriers" },
+
+  // AGO: financial guaranty (bond insurance), not traditional P&C — loss/combined ratios deleted
+  { ticker: "AGO", metric: "underwriting_expenses", reason: "Financial guaranty — no standard UW expense tags" },
+  { ticker: "AGO", metric: "loss_ratio", reason: "Financial guaranty — ratios deleted (reserve releases cause negatives)" },
+  { ticker: "AGO", metric: "combined_ratio", reason: "Financial guaranty — ratios deleted (reserve releases cause negatives)" },
+  { ticker: "AGO", metric: "expense_ratio", reason: "Cascade: no underwriting_expenses" },
+
+  // GSHD: negative equity FY2021-2022 — calculator guards correctly skip derived ratios
+  { ticker: "GSHD", metric: "roe", years: [2021, 2022], reason: "Negative equity — calculator guard (equity > 0)" },
+  { ticker: "GSHD", metric: "debt_to_equity", years: [2021, 2022], reason: "Negative equity — calculator guard (equity > 0)" },
+  { ticker: "GSHD", metric: "book_value_per_share", years: [2021, 2022], reason: "Negative equity — calculator guard (equity > 0)" },
+  { ticker: "GSHD", metric: "total_debt", years: [2021, 2022], reason: "Pre-IPO limited debt data" },
+
+  // KMPR: negative equity FY2021 (-$849.7M) — calculator guards correctly skip derived ratios
+  { ticker: "KMPR", metric: "losses_incurred", reason: "Missing XBRL alias — Kemper uses non-standard claims tag" },
+  { ticker: "KMPR", metric: "loss_ratio", reason: "Cascade: no losses_incurred" },
+  { ticker: "KMPR", metric: "combined_ratio", reason: "Cascade: no losses_incurred → no loss_ratio" },
+  { ticker: "KMPR", metric: "roe", years: [2021], reason: "Negative equity FY2021 (-$849.7M) — calculator guard" },
+  { ticker: "KMPR", metric: "debt_to_equity", years: [2021], reason: "Negative equity FY2021 — calculator guard" },
+  { ticker: "KMPR", metric: "book_value_per_share", years: [2021], reason: "Negative equity FY2021 — calculator guard" },
+
+  // PLMR: small specialty insurer, likely debt-free
+  { ticker: "PLMR", metric: "total_debt", reason: "Small specialty insurer — likely debt-free (no debt XBRL tags)" },
+
+  // PRI: Primerica, likely debt-free
+  { ticker: "PRI", metric: "total_debt", reason: "Primerica — likely debt-free (no debt XBRL tags)" },
+
+  // BRP: Baldwin Insurance Group — pre-IPO limited data
+  { ticker: "BRP", metric: "total_debt", years: [2021, 2022], reason: "Pre-IPO/early filing — limited debt data" },
+
+  // HG: Hamilton Insurance Group — IPO Nov 2023, FY2021 is from S-1 comparatives
+  { ticker: "HG", metric: "total_assets", years: [2021], reason: "Pre-IPO (Nov 2023) — S-1 comparatives limited" },
+  { ticker: "HG", metric: "total_liabilities", years: [2021], reason: "Pre-IPO — S-1 comparatives limited" },
+  { ticker: "HG", metric: "total_debt", years: [2021], reason: "Pre-IPO — S-1 comparatives limited" },
+
+  // AXS: AXIS Capital — missing XBRL aliases for investment_income and total_debt
+  { ticker: "AXS", metric: "investment_income", reason: "Missing XBRL alias — AXIS uses non-standard tag" },
+  { ticker: "AXS", metric: "total_debt", reason: "Missing XBRL alias — AXIS uses non-standard tag" },
+
+  // MCY: Mercury General — FY2024 underwriting_expenses gap (possible tag change)
+  { ticker: "MCY", metric: "underwriting_expenses", years: [2024], reason: "FY2024 tag change or filing gap" },
+
+  // RLI: FY2024 gaps for acquisition_costs and total_debt
+  { ticker: "RLI", metric: "acquisition_costs", years: [2024], reason: "FY2024 filing lag or tag change" },
+  { ticker: "RLI", metric: "total_debt", years: [2024], reason: "FY2024 filing lag or tag change" },
+
+  // VOYA: retirement/investment company — premiums deleted (tag mismatch)
+  { ticker: "VOYA", metric: "net_premiums_earned", reason: "Retirement company — premiums deleted (XBRL tag mismatch)" },
+
+  // FG: F&G Annuities & Life — IPO Dec 2022
+  { ticker: "FG", metric: "eps", years: [2021], reason: "Pre-IPO (Dec 2022) — limited S-1 data" },
+  { ticker: "FG", metric: "shares_outstanding", years: [2021], reason: "Pre-IPO — limited S-1 data" },
+
+  // Title sector: no underwriting ratios expected
+  { sector: "Title", metric: "net_premiums_earned", reason: "Title insurers — premiums not applicable" },
+  { sector: "Title", metric: "losses_incurred", reason: "Title insurers — claims structure differs from P&C" },
+  { sector: "Title", metric: "acquisition_costs", reason: "Title insurers — no standard UW cost tags" },
+  { sector: "Title", metric: "underwriting_expenses", reason: "Title insurers — no standard UW expense tags" },
+  { sector: "Title", metric: "investment_income", reason: "Title insurers — investment income not primary" },
+
+  // Mortgage Insurance: different expense structures from P&C — non-standard XBRL tags
+  { ticker: "ESNT", metric: "underwriting_expenses", reason: "MI companies use different expense XBRL tags than P&C" },
+  { ticker: "ESNT", metric: "acquisition_costs", reason: "MI companies use different expense XBRL tags than P&C" },
+  { ticker: "NMIH", metric: "underwriting_expenses", reason: "MI companies use different expense XBRL tags than P&C" },
+  { ticker: "NMIH", metric: "total_debt", reason: "NMI Holdings — uses non-standard debt XBRL tags" },
+  { ticker: "RDN", metric: "underwriting_expenses", reason: "MI companies use different expense XBRL tags than P&C" },
+  { ticker: "MTG", metric: "underwriting_expenses", reason: "MI companies use different expense XBRL tags than P&C" },
+  { ticker: "MTG", metric: "acquisition_costs", reason: "MI companies use different expense XBRL tags than P&C" },
 ];
 
 function isKnownException(ticker: string, sector: string, metric: string, year: number): KnownException | undefined {

@@ -117,7 +117,7 @@ function CustomTooltip({
       </p>
       {d.prospectScore != null && (
         <p>
-          Prospect Score:{" "}
+          Efficiency Score:{" "}
           <span className="font-mono font-semibold">{d.prospectScore}/100</span>
         </p>
       )}

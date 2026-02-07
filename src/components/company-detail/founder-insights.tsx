@@ -43,7 +43,7 @@ export function FounderInsights({ narrative, prospectScore }: FounderInsightsPro
               {narrative.relevantUseCases.map((uc) => (
                 <Link
                   key={uc.id}
-                  href={`/opportunities?useCase=${uc.id}`}
+                  href={`/intel?useCase=${uc.id}`}
                 >
                   <Badge
                     variant="secondary"

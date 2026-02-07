@@ -128,7 +128,7 @@ export function OpportunityLandscape({
           Opportunity Landscape
         </CardTitle>
         <CardDescription className="text-xs">
-          {sectorName} companies mapped by operational pain (X) vs momentum (Y). Bubble color = prospect score.
+          {sectorName} companies mapped by operational pain (X) vs momentum (Y). Bubble color = efficiency score.
         </CardDescription>
       </CardHeader>
       <CardContent>

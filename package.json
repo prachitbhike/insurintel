@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -12,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.16.3",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.2",
     "@tanstack/react-table": "^8.21.3",
@@ -29,6 +33,9 @@
     "recharts": "^2.15.4",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.6"
+  },
+  "overrides": {
+    "esbuild": "0.27.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

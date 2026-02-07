@@ -200,7 +200,7 @@ export function ProspectTable({ rows }: ProspectTableProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "opportunities.csv";
+    a.download = "company-intel.csv";
     a.click();
     URL.revokeObjectURL(url);
   }, [sorted]);

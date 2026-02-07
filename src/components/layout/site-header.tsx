@@ -17,7 +17,7 @@ import { SectorToggleGlobal } from "./sector-toggle-global";
 
 const navigation = [
   { name: "Dashboard", href: "/" },
-  { name: "Opportunities", href: "/opportunities" },
+  { name: "Company Intel", href: "/intel" },
   { name: "Learn", href: "/learn" },
 ];
 

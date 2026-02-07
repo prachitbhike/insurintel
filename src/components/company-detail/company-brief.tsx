@@ -61,7 +61,7 @@ export function CompanyBrief({ quickTakeSentences, founderNarrative }: CompanyBr
               {useCases.map((uc) => (
                 <Link
                   key={uc.id}
-                  href={`/opportunities?useCase=${uc.id}`}
+                  href={`/intel?useCase=${uc.id}`}
                 >
                   <Badge
                     variant="secondary"

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Opportunities",
+  title: "Company Intel",
   description:
     "Insurance companies ranked by composite efficiency score, derived from SEC filing data.",
 };
@@ -62,7 +62,7 @@ export default function OpportunitiesPage() {
     <div className="container px-4 py-8 md:px-6">
       <div className="mb-6">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary/60 mb-2">
-          Opportunities
+          Company Intel
         </p>
         <h1 className="text-3xl font-display tracking-tight">Efficiency Rankings</h1>
         <p className="mt-2 text-base text-muted-foreground leading-relaxed max-w-2xl">

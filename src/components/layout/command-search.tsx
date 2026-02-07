@@ -52,7 +52,7 @@ export function CommandSearch() {
 
   const pages = [
     { name: "Dashboard", href: "/" },
-    { name: "Opportunities", href: "/opportunities" },
+    { name: "Company Intel", href: "/intel" },
     { name: "Compare", href: "/compare" },
     { name: "Learn / Glossary", href: "/learn" },
   ];

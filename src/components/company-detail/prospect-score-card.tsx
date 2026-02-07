@@ -71,9 +71,9 @@ export function ProspectScoreCard({ prospectScore }: ProspectScoreCardProps) {
       <CardHeader className="pb-3 pt-4 px-5">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-sm">Prospect Score</CardTitle>
+            <CardTitle className="text-sm">Efficiency Score</CardTitle>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              How likely this carrier is to buy AI/automation solutions.
+              Operational efficiency gaps vs. sector peers, weighted by trend and scale.
             </p>
           </div>
           <div className="flex items-baseline gap-1">

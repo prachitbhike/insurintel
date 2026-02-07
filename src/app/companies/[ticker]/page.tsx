@@ -344,7 +344,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
             {useCases.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {useCases.map((uc) => (
-                  <Link key={uc.id} href={`/opportunities?useCase=${uc.id}`}>
+                  <Link key={uc.id} href={`/intel?useCase=${uc.id}`}>
                     <Badge
                       variant="secondary"
                       className="rounded-sm font-mono text-[10px] uppercase hover:bg-accent cursor-pointer px-1.5 py-0"

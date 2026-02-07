@@ -23,11 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCurrency, formatPercent } from "@/lib/metrics/formatters";
-import { type PCCarrierData } from "@/lib/queries/pc-dashboard";
+import { type CarrierData } from "@/lib/queries/sector-dashboard";
 
-interface CostBreakdownChartProps {
-  carriers: PCCarrierData[];
-  years: number[];
+interface UWCostBreakdownChartProps {
+  carriers: CarrierData[];
+  sectorLabel: string;
+  excludeTickers?: string[];
+  allowNegativeLoss?: boolean;
 }
 
 type SortMode = "premiums" | "expense_ratio" | "loss_ratio";
@@ -43,6 +45,8 @@ interface CostBreakdownItem {
   uwResultNegative: number;
   lossRatio: number | null;
   expenseRatio: number | null;
+  hasNegativeLoss: boolean;
+  negativeLossCosts: number;
 }
 
 const chartConfig = {
@@ -62,14 +66,20 @@ const chartConfig = {
     label: "UW Loss",
     color: "hsl(0 70% 55%)",
   },
+  negativeLossCosts: {
+    label: "Reserve Release",
+    color: "hsl(185 60% 50%)",
+  },
 } satisfies ChartConfig;
 
 function CustomTooltip({
   active,
   payload,
+  allowNegativeLoss,
 }: {
   active?: boolean;
   payload?: Array<{ payload: CostBreakdownItem }>;
+  allowNegativeLoss?: boolean;
 }) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
@@ -87,15 +97,15 @@ function CustomTooltip({
         </div>
         <div className="flex justify-between">
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: "hsl(220 70% 50%)" }} />
-            Loss Costs (Claims AI)
+            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: d.hasNegativeLoss ? "hsl(185 60% 50%)" : "hsl(220 70% 50%)" }} />
+            {d.hasNegativeLoss ? "Reserve Releases" : "Loss Costs"}
           </span>
           <span className="font-mono">{formatCurrency(d.lossCosts)}</span>
         </div>
         <div className="flex justify-between">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: "hsl(220 50% 70%)" }} />
-            Expense Costs (Ops AI)
+            Expense Costs
           </span>
           <span className="font-mono">{formatCurrency(d.expenseCosts)}</span>
         </div>
@@ -118,19 +128,26 @@ function CustomTooltip({
           Expense Ratio: {formatPercent(d.expenseRatio, 1)}
         </p>
       )}
+      {allowNegativeLoss && d.hasNegativeLoss && (
+        <p className="text-cyan-600 dark:text-cyan-400 pt-0.5 text-[10px]">
+          Negative loss ratio indicates reserve releases (prior year reserves reduced)
+        </p>
+      )}
     </div>
   );
 }
 
-export function CostBreakdownChart({
+export function UWCostBreakdownChart({
   carriers,
-  years,
-}: CostBreakdownChartProps) {
+  sectorLabel,
+  excludeTickers = [],
+  allowNegativeLoss = false,
+}: UWCostBreakdownChartProps) {
   const [sortMode, setSortMode] = useState<SortMode>("premiums");
 
   const data = useMemo(() => {
     const items: CostBreakdownItem[] = carriers
-      .filter((c) => c.ticker !== "ERIE") // management company, no UW metrics
+      .filter((c) => !excludeTickers.includes(c.ticker))
       .map((c) => {
         const premiums = c.latest.net_premiums_earned;
         const lossRatio = c.latest.loss_ratio;
@@ -139,6 +156,7 @@ export function CostBreakdownChart({
         if (premiums == null || premiums <= 0) return null;
         if (lossRatio == null && expenseRatio == null) return null;
 
+        const hasNegativeLoss = lossRatio != null && lossRatio < 0;
         const lossCosts = lossRatio != null ? (lossRatio / 100) * premiums : 0;
         const expenseCosts = expenseRatio != null ? (expenseRatio / 100) * premiums : 0;
         const uwResult = premiums - lossCosts - expenseCosts;
@@ -147,18 +165,19 @@ export function CostBreakdownChart({
           ticker: c.ticker,
           name: c.name,
           premiums,
-          lossCosts,
+          lossCosts: hasNegativeLoss && allowNegativeLoss ? 0 : Math.max(0, lossCosts),
           expenseCosts,
           uwResult,
           uwResultPositive: uwResult >= 0 ? uwResult : 0,
           uwResultNegative: uwResult < 0 ? Math.abs(uwResult) : 0,
           lossRatio,
           expenseRatio,
+          hasNegativeLoss,
+          negativeLossCosts: hasNegativeLoss && allowNegativeLoss ? Math.abs(lossCosts) : 0,
         };
       })
       .filter((d): d is CostBreakdownItem => d != null);
 
-    // Sort
     items.sort((a, b) => {
       switch (sortMode) {
         case "premiums":
@@ -171,7 +190,7 @@ export function CostBreakdownChart({
     });
 
     return items;
-  }, [carriers, years, sortMode]);
+  }, [carriers, sortMode, excludeTickers, allowNegativeLoss]);
 
   const totals = useMemo(() => {
     const totalPremiums = data.reduce((s, d) => s + d.premiums, 0);
@@ -180,12 +199,8 @@ export function CostBreakdownChart({
     return { totalPremiums, totalLosses, totalExpenses };
   }, [data]);
 
-  const excludedTickers = useMemo(
-    () => carriers.filter((c) => c.ticker === "ERIE").map((c) => c.ticker),
-    [carriers]
-  );
-
-  const chartHeight = Math.max(300, data.length * 40 + 80);
+  const barSize = carriers.length <= 4 ? 36 : carriers.length <= 8 ? 28 : 24;
+  const chartHeight = Math.max(250, data.length * (barSize + 16) + 80);
 
   return (
     <Card className="rounded-sm">
@@ -196,7 +211,7 @@ export function CostBreakdownChart({
               Cost Breakdown — Where Every Premium Dollar Goes
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              P&C carriers collected{" "}
+              {sectorLabel} collected{" "}
               <span className="font-mono font-semibold">{formatCurrency(totals.totalPremiums)}</span> in premiums:{" "}
               <span className="font-mono">{formatCurrency(totals.totalLosses)}</span> to losses,{" "}
               <span className="font-mono">{formatCurrency(totals.totalExpenses)}</span> to expenses
@@ -219,11 +234,11 @@ export function CostBreakdownChart({
         <div className="mb-3 flex flex-wrap gap-4 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "hsl(220 70% 50%)" }} />
-            Loss Costs (Claims AI)
+            Loss Costs
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "hsl(220 50% 70%)" }} />
-            Expense Costs (Ops AI)
+            Expense Costs
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "hsl(142 60% 45%)" }} />
@@ -233,9 +248,15 @@ export function CostBreakdownChart({
             <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "hsl(0 70% 55% / 0.7)" }} />
             UW Loss
           </div>
-          {excludedTickers.length > 0 && (
+          {allowNegativeLoss && data.some((d) => d.hasNegativeLoss) && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "hsl(185 60% 50%)" }} />
+              Reserve Release
+            </div>
+          )}
+          {excludeTickers.length > 0 && (
             <span className="ml-auto">
-              Excluded: {excludedTickers.join(", ")} (management company)
+              Excluded: {excludeTickers.join(", ")}
             </span>
           )}
         </div>
@@ -249,7 +270,7 @@ export function CostBreakdownChart({
             data={data}
             layout="vertical"
             margin={{ top: 10, right: 40, left: 0, bottom: 10 }}
-            barSize={24}
+            barSize={barSize}
           >
             <CartesianGrid
               horizontal={false}
@@ -280,7 +301,7 @@ export function CostBreakdownChart({
                 v.length > 22 ? v.slice(0, 20) + "…" : v
               }
             />
-            <ChartTooltip content={<CustomTooltip />} />
+            <ChartTooltip content={<CustomTooltip allowNegativeLoss={allowNegativeLoss} />} />
             <Bar
               dataKey="lossCosts"
               stackId="costs"
@@ -325,9 +346,26 @@ export function CostBreakdownChart({
                 />
               ))}
             </Bar>
+            {allowNegativeLoss && (
+              <Bar
+                dataKey="negativeLossCosts"
+                stackId="costs"
+                radius={[0, 0, 0, 0]}
+              >
+                {data.map((entry) => (
+                  <Cell
+                    key={entry.ticker}
+                    fill={
+                      entry.negativeLossCosts > 0
+                        ? "hsl(185 60% 50%)"
+                        : "transparent"
+                    }
+                  />
+                ))}
+              </Bar>
+            )}
           </BarChart>
         </ChartContainer>
-
       </CardContent>
     </Card>
   );

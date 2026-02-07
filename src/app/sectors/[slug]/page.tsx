@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getSectorAverages } from "@/lib/queries/sectors";
 import { getCompaniesBySector } from "@/lib/queries/companies";
 import { SECTORS, getSectorBySlug } from "@/lib/data/sectors";
-import { SectorTrendCharts, type SectorTrendData } from "@/components/sectors/sector-trend-charts";
 import { CompaniesTable } from "@/components/companies/companies-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,8 +15,8 @@ import { Info } from "lucide-react";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { type CompanyListItem } from "@/types/company";
 import { type LatestMetric, type SectorAverage } from "@/types/database";
-import { fetchPCDashboardData, type PCDashboardData } from "@/lib/queries/pc-dashboard";
-import { PCMarketPulseDashboard } from "@/components/dashboard/pc-market-pulse/pc-market-pulse-dashboard";
+import { fetchSectorDashboardData, type SectorDashboardData } from "@/lib/queries/sector-dashboard";
+import { SectorMarketPulseDashboard } from "@/components/dashboard/sector-market-pulse/sector-market-pulse-dashboard";
 
 export const revalidate = 3600;
 
@@ -52,15 +51,10 @@ export default async function SectorDetailPage({ params }: PageProps) {
   const sector = getSectorBySlug(slug);
   if (!sector) notFound();
 
-  const averages: Record<string, number> = {};
   let sectorAvgRows: SectorAverage[] = [];
-  const trendData: SectorTrendData = {};
-  const quarterlyTrendData: SectorTrendData = {};
-  let tickers: string[] = [];
   let tableData: CompanyListItem[] = [];
   let heroStats: ComputedHeroStat[] = [];
-  let pcDashboardData: PCDashboardData | null = null;
-  const isPCsector = sector.slug === "p-and-c";
+  let dashboardData: SectorDashboardData | null = null;
 
   try {
     const supabase = await createClient();
@@ -74,93 +68,6 @@ export default async function SectorDetailPage({ params }: PageProps) {
     ]);
 
     sectorAvgRows = sectorAvgs;
-    for (const avg of sectorAvgs) {
-      averages[avg.metric_name] = avg.avg_value;
-    }
-
-    const companyIds = companies.map((c) => c.id);
-    tickers = companies.map((c) => c.ticker).sort();
-
-    const [{ data: tsRows }, { data: qTsRows }] = await Promise.all([
-      supabase
-        .from("financial_metrics")
-        .select("company_id, metric_name, metric_value, fiscal_year, fiscal_quarter")
-        .in("company_id", companyIds)
-        .in("metric_name", sector.key_metrics)
-        .eq("period_type", "annual")
-        .order("fiscal_year", { ascending: true }),
-      supabase
-        .from("mv_metric_timeseries")
-        .select("company_id, ticker, metric_name, metric_value, fiscal_year, fiscal_quarter")
-        .in("company_id", companyIds)
-        .in("metric_name", sector.key_metrics)
-        .eq("period_type", "quarterly")
-        .order("fiscal_year", { ascending: true })
-        .order("fiscal_quarter", { ascending: true }),
-    ]);
-
-    // Build ticker lookup for base table rows (no ticker column)
-    const tickerById = new Map<string, string>();
-    for (const c of companies) tickerById.set(c.id, c.ticker);
-
-    // Build annual trend data
-    const metricYearMap = new Map<string, Map<number, Map<string, number>>>();
-    for (const row of tsRows ?? []) {
-      const ticker = tickerById.get(row.company_id);
-      if (!ticker) continue;
-      if (!metricYearMap.has(row.metric_name)) {
-        metricYearMap.set(row.metric_name, new Map());
-      }
-      const yearMap = metricYearMap.get(row.metric_name)!;
-      if (!yearMap.has(row.fiscal_year)) {
-        yearMap.set(row.fiscal_year, new Map());
-      }
-      yearMap.get(row.fiscal_year)!.set(ticker, row.metric_value);
-    }
-
-    for (const [metric, yearMap] of metricYearMap) {
-      const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
-      trendData[metric] = years.map((year) => {
-        const tickerVals = yearMap.get(year)!;
-        const entry: Record<string, string | number | null> = { period: String(year) };
-        for (const t of tickers) {
-          entry[t] = tickerVals.get(t) ?? null;
-        }
-        return entry as { period: string; [ticker: string]: string | number | null };
-      });
-    }
-
-    // Build quarterly trend data
-    const metricQuarterMap = new Map<string, Map<string, Map<string, number>>>();
-    for (const row of qTsRows ?? []) {
-      const ticker = tickerById.get(row.company_id);
-      if (!ticker) continue;
-      if (!metricQuarterMap.has(row.metric_name)) {
-        metricQuarterMap.set(row.metric_name, new Map());
-      }
-      const periodKey = `${row.fiscal_year} Q${row.fiscal_quarter}`;
-      const qMap = metricQuarterMap.get(row.metric_name)!;
-      if (!qMap.has(periodKey)) {
-        qMap.set(periodKey, new Map());
-      }
-      qMap.get(periodKey)!.set(ticker, row.metric_value);
-    }
-
-    for (const [metric, qMap] of metricQuarterMap) {
-      const periods = Array.from(qMap.keys()).sort((a, b) => {
-        const [aY, aQ] = a.split(" Q").map(Number);
-        const [bY, bQ] = b.split(" Q").map(Number);
-        return (aY * 10 + aQ) - (bY * 10 + bQ);
-      });
-      quarterlyTrendData[metric] = periods.map((period) => {
-        const tickerVals = qMap.get(period)!;
-        const entry: Record<string, string | number | null> = { period };
-        for (const t of tickers) {
-          entry[t] = tickerVals.get(t) ?? null;
-        }
-        return entry as { period: string; [ticker: string]: string | number | null };
-      });
-    }
 
     const metrics = (metricsRes.data ?? []) as LatestMetric[];
     const metricsByCompany = new Map<string, Map<string, number>>();
@@ -205,10 +112,8 @@ export default async function SectorDetailPage({ params }: PageProps) {
       };
     });
 
-    // Fetch P&C dashboard data if applicable
-    if (isPCsector) {
-      pcDashboardData = await fetchPCDashboardData(supabase, companies, sectorAvgRows);
-    }
+    // Fetch Market Pulse dashboard data for this sector
+    dashboardData = await fetchSectorDashboardData(supabase, companies, sectorAvgRows);
 
     tableData = companies.map((c) => {
       const cm = metricsByCompany.get(c.id);
@@ -283,31 +188,24 @@ export default async function SectorDetailPage({ params }: PageProps) {
       {/* Main Content */}
       <div className="container px-4 md:px-6">
         <div className="space-y-6 py-8">
-          {isPCsector && pcDashboardData ? (
-            <PCMarketPulseDashboard dashboardData={pcDashboardData} />
-          ) : (
-            <>
-              {/* Trend Charts */}
-              <SectorTrendCharts
-                trendData={trendData}
-                quarterlyTrendData={quarterlyTrendData}
-                availableMetrics={sector.key_metrics}
-                tickers={tickers}
-                sector={sector.name}
-              />
-
-              {/* Companies Table */}
-              <div>
-                <h2 className="text-xl font-display tracking-tight mb-4">
-                  Companies in {sector.label}
-                </h2>
-                <CompaniesTable
-                  data={tableData}
-                  initialSectorFilter={[sector.name]}
-                />
-              </div>
-            </>
+          {dashboardData && (
+            <SectorMarketPulseDashboard
+              sectorName={sector.name}
+              sectorLabel={sector.label}
+              dashboardData={dashboardData}
+            />
           )}
+
+          {/* Companies Table */}
+          <div>
+            <h2 className="text-xl font-display tracking-tight mb-4">
+              Companies in {sector.label}
+            </h2>
+            <CompaniesTable
+              data={tableData}
+              initialSectorFilter={[sector.name]}
+            />
+          </div>
         </div>
       </div>
     </div>
