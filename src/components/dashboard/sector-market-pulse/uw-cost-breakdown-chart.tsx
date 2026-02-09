@@ -49,7 +49,7 @@ interface CostBreakdownItem {
   uwResult: number;
   uwResultPositive: number;
   uwResultNegative: number;
-  lossRatio: number | null;
+  lossRatio: number;
   expenseRatio: number | null;
   hasNegativeLoss: boolean;
   negativeLossCosts: number;
@@ -151,6 +151,17 @@ export function UWCostBreakdownChart({
 }: UWCostBreakdownChartProps) {
   const [sortMode, setSortMode] = useState<SortMode>("premiums");
 
+  // Collect tickers excluded due to missing loss data (for footnote)
+  const missingLossTickers = useMemo(() => {
+    return carriers
+      .filter((c) => !excludeTickers.includes(c.ticker))
+      .filter((c) => {
+        const premiums = c.latest.net_premiums_earned;
+        return premiums != null && premiums > 0 && c.latest.loss_ratio == null;
+      })
+      .map((c) => c.ticker);
+  }, [carriers, excludeTickers]);
+
   const data = useMemo(() => {
     const items: CostBreakdownItem[] = carriers
       .filter((c) => !excludeTickers.includes(c.ticker))
@@ -160,7 +171,8 @@ export function UWCostBreakdownChart({
         const expenseRatio = c.latest.expense_ratio;
 
         if (premiums == null || premiums <= 0) return null;
-        if (lossRatio == null && expenseRatio == null) return null;
+        // Require loss_ratio — can't show cost breakdown without it
+        if (lossRatio == null) return null;
 
         const hasNegativeLoss = lossRatio != null && lossRatio < 0;
         const lossCosts = lossRatio != null ? (lossRatio / 100) * premiums : 0;
@@ -278,9 +290,10 @@ export function UWCostBreakdownChart({
               Reserve Release
             </div>
           )}
-          {excludeTickers.length > 0 && (
+          {(excludeTickers.length > 0 || missingLossTickers.length > 0) && (
             <span className="ml-auto">
-              Excluded: {excludeTickers.join(", ")}
+              Not shown: {[...excludeTickers, ...missingLossTickers].join(", ")}
+              {missingLossTickers.length > 0 && " (loss data unavailable)"}
             </span>
           )}
         </div>
