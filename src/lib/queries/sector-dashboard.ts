@@ -113,25 +113,35 @@ export function buildSectorDashboardFromBulk(
       for (const metric of ALL_METRICS) {
         if (latest[metric] == null) continue;
         const ts = companyTs[metric];
-        const latestYear = ts
+        const inferredYear = ts
           ? Math.max(...ts.map((e) => e.fiscal_year))
           : 2024;
-        yearsSet.add(latestYear);
+        yearsSet.add(inferredYear);
         if (!companyYearMetrics.has(c.id)) {
           companyYearMetrics.set(c.id, new Map());
         }
         const yearMap = companyYearMetrics.get(c.id)!;
-        if (!yearMap.has(latestYear)) {
-          yearMap.set(latestYear, new Map());
+        if (!yearMap.has(inferredYear)) {
+          yearMap.set(inferredYear, new Map());
         }
-        if (!yearMap.get(latestYear)!.has(metric)) {
-          yearMap.get(latestYear)!.set(metric, latest[metric]);
+        if (!yearMap.get(inferredYear)!.has(metric)) {
+          yearMap.get(inferredYear)!.set(metric, latest[metric]);
         }
       }
     }
   }
 
-  const years = Array.from(yearsSet).sort((a, b) => a - b);
+  // Filter years to those with sufficient data coverage (avoids phantom years
+  // from e.g. a single company with spurious FY2025 data)
+  const minCompaniesForYear = Math.max(2, Math.ceil(sectorCompanies.length * 0.25));
+  const years = Array.from(yearsSet)
+    .sort((a, b) => a - b)
+    .filter((y) => {
+      const companiesWithData = sectorCompanies.filter(
+        (c) => companyYearMetrics.get(c.id)?.has(y)
+      ).length;
+      return companiesWithData >= minCompaniesForYear;
+    });
   const latestYear = years[years.length - 1] ?? 2024;
 
   const carriers: CarrierData[] = sectorCompanies.map((c) => {
@@ -189,7 +199,7 @@ export function buildSectorDashboardFromBulk(
 
 async function paginatedFetch<T>(
   queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-  pageSize = 5000
+  pageSize = 1000
 ): Promise<T[]> {
   const allData: T[] = [];
   let offset = 0;
@@ -245,7 +255,14 @@ export async function fetchSectorDashboardData(
     yearMap.get(row.fiscal_year)!.set(row.metric_name, row.metric_value);
   }
 
-  const years = Array.from(yearsSet).sort((a, b) => a - b);
+  // Filter years to those with sufficient data coverage
+  const minCosForYear = Math.max(2, Math.ceil(companies.length * 0.25));
+  const years = Array.from(yearsSet)
+    .sort((a, b) => a - b)
+    .filter((y) => {
+      const cosWithData = companies.filter((c) => companyMap.get(c.id)?.has(y)).length;
+      return cosWithData >= minCosForYear;
+    });
   const latestYear = years[years.length - 1] ?? 2024;
 
   // Build scoring data for prospect scores

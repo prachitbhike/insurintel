@@ -17,7 +17,7 @@ import { getReadOnlyClient } from "@/lib/supabase/server";
  */
 async function paginatedFetch<T>(
   queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-  pageSize = 5000
+  pageSize = 1000
 ): Promise<T[]> {
   const allData: T[] = [];
   let offset = 0;
@@ -80,18 +80,18 @@ export async function getCompanyFinancials(
     fiscal_quarter: number | null;
   }[]
 > {
-  // Use mv_metric_timeseries (pre-indexed) instead of base financial_metrics table
+  // Query financial_metrics base table (mv_metric_timeseries is quarterly-only)
   let query = supabase
-    .from("mv_metric_timeseries")
+    .from("financial_metrics")
     .select("metric_name, metric_value, unit, fiscal_year, fiscal_quarter")
     .eq("company_id", companyId)
     .order("fiscal_year", { ascending: false })
     .order("metric_name");
 
   if (periodType === "annual") {
-    query = query.is("fiscal_quarter", null);
+    query = query.eq("period_type", "annual");
   } else {
-    query = query.not("fiscal_quarter", "is", null);
+    query = query.eq("period_type", "quarterly");
   }
 
   const { data, error } = await query;
