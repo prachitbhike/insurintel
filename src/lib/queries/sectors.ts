@@ -1,13 +1,14 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
+import { cache } from "react";
 import {
   type SectorAverage,
   type CompanyRanking,
 } from "@/types/database";
 
-export async function getSectorAverages(
+export const getSectorAverages = cache(async (
   supabase: SupabaseClient,
   sector?: string
-): Promise<SectorAverage[]> {
+): Promise<SectorAverage[]> => {
   let query = supabase.from("mv_sector_averages").select("*");
   if (sector) {
     query = query.eq("sector", sector);
@@ -16,7 +17,7 @@ export async function getSectorAverages(
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
-}
+});
 
 export async function getSectorRankings(
   supabase: SupabaseClient,
@@ -34,10 +35,10 @@ export async function getSectorRankings(
   return data ?? [];
 }
 
-export async function getCompanyRankings(
+export const getCompanyRankings = cache(async (
   supabase: SupabaseClient,
   companyId: string
-): Promise<CompanyRanking[]> {
+): Promise<CompanyRanking[]> => {
   const { data, error } = await supabase
     .from("mv_company_rankings")
     .select("*")
@@ -45,7 +46,7 @@ export async function getCompanyRankings(
 
   if (error) throw error;
   return data ?? [];
-}
+});
 
 export interface SectorOverview {
   sector: string;

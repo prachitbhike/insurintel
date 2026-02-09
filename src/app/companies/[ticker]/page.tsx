@@ -9,11 +9,16 @@ import {
   getCompanyFinancials,
 } from "@/lib/queries/metrics";
 import { getCompanyRankings, getSectorAverages } from "@/lib/queries/sectors";
-import { getTechSignalsByCompany } from "@/lib/queries/tech-signals";
+import { getLatestTechSignal } from "@/lib/queries/tech-signals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SectorBadge } from "@/components/dashboard/sector-badge";
-import { PainChart } from "@/components/company-detail/pain-chart";
+import dynamic from "next/dynamic";
+
+const PainChart = dynamic(
+  () => import("@/components/company-detail/pain-chart").then((m) => m.PainChart),
+  { loading: () => <div className="h-full animate-pulse bg-muted/50 rounded" /> }
+);
 import { OpportunityPanel } from "@/components/company-detail/opportunity-panel";
 import { ProspectScoreCard } from "@/components/company-detail/prospect-score-card";
 import { SignalsRow } from "@/components/company-detail/signals-row";
@@ -92,7 +97,7 @@ export default async function CompanyDetailPage({ params }: PageProps) {
   let prospectScoreResult: ProspectScoreResult | null = null;
   let hookSentence = "";
   let useCases: { id: string; name: string; reasoning: string }[] = [];
-  let techSignals: TechAdoptionSignal[] = [];
+  let latestTech: TechAdoptionSignal | null = null;
   let sectorAvgsRecord: Record<string, number | null> = {};
   let opportunityData = {
     painMetricName: null as string | null,
@@ -125,10 +130,10 @@ export default async function CompanyDetailPage({ params }: PageProps) {
         getCompanyRankings(supabase, company.id),
         getSectorAverages(supabase, company.sector),
         getCompanyFinancials(supabase, company.id, "annual"),
-        getTechSignalsByCompany(supabase, company.id),
+        getLatestTechSignal(supabase, company.id),
       ]);
 
-    techSignals = techSignalsData;
+    latestTech = techSignalsData;
 
     // Metrics lookups
     const metricsByName = new Map(latestMetrics.map((m) => [m.metric_name, m]));
@@ -255,7 +260,6 @@ export default async function CompanyDetailPage({ params }: PageProps) {
   const score = prospectScoreResult?.totalScore ?? null;
   const scoreTier = score != null ? (score >= 70 ? "High" : score >= 40 ? "Mid" : "Low") : null;
   const scoreColor = score != null ? (score >= 70 ? "text-emerald-500" : score >= 40 ? "text-yellow-500" : "text-red-500") : "";
-  const latestTech = techSignals.length > 0 ? techSignals[0] : null;
 
   return (
     <div className={cn("container px-4 py-5 md:px-6 border-t-2 space-y-4", sectorBorder[company.sector as Sector] ?? "")}>

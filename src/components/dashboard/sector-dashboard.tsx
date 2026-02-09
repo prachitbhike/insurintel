@@ -1,9 +1,14 @@
+import dynamic from "next/dynamic";
 import { type SectorInfo } from "@/lib/data/sectors";
 import { type Sector } from "@/types/database";
 import { HeroBenchmarksV2, type HeroMetric } from "./hero-benchmarks-v2";
-import { SectorMarketPulseDashboard } from "./sector-market-pulse/sector-market-pulse-dashboard";
 import { type SectorDashboardData } from "@/lib/queries/sector-dashboard";
 import { cn } from "@/lib/utils";
+
+const SectorMarketPulseDashboard = dynamic(
+  () => import("./sector-market-pulse/sector-market-pulse-dashboard").then((m) => m.SectorMarketPulseDashboard),
+  { loading: () => <div className="h-64 animate-pulse bg-muted/50 rounded" /> }
+);
 
 const SECTOR_TAGLINES: Record<Sector, string> = {
   "P&C": "Who's bleeding money on operations — and where AI can cut costs.",

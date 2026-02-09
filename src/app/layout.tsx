@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { DM_Sans, IBM_Plex_Mono, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SiteHeader } from "@/components/layout/site-header";
-import { CommandSearch } from "@/components/layout/command-search";
 import { Footer } from "@/components/layout/footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+
+const CommandSearch = dynamic(
+  () => import("@/components/layout/command-search").then((m) => m.CommandSearch)
+);
 
 const dmSans = DM_Sans({
   variable: "--font-geist-sans",
@@ -14,7 +18,7 @@ const dmSans = DM_Sans({
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-geist-mono",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
   subsets: ["latin"],
 });
 
@@ -39,6 +43,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <link
+          rel="preconnect"
+          href={process.env.NEXT_PUBLIC_SUPABASE_URL}
+        />
+      </head>
       <body
         className={`${dmSans.variable} ${ibmPlexMono.variable} ${playfairDisplay.variable} font-sans antialiased`}
       >

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSectorAverages } from "@/lib/queries/sectors";
 import { getCompaniesBySector } from "@/lib/queries/companies";
+import { getBulkScoringData, preloadBulkScoringData } from "@/lib/queries/metrics";
+import { computeProspectScoresBatch } from "@/lib/scoring";
 import { SECTORS, getSectorBySlug } from "@/lib/data/sectors";
 import { CompaniesTable } from "@/components/companies/companies-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +17,13 @@ import { Info } from "lucide-react";
 import { formatMetricValue } from "@/lib/metrics/formatters";
 import { type CompanyListItem } from "@/types/company";
 import { type LatestMetric, type SectorAverage } from "@/types/database";
-import { fetchSectorDashboardData, type SectorDashboardData } from "@/lib/queries/sector-dashboard";
-import { SectorMarketPulseDashboard } from "@/components/dashboard/sector-market-pulse/sector-market-pulse-dashboard";
+import { buildSectorDashboardFromBulk, type SectorDashboardData } from "@/lib/queries/sector-dashboard";
+import dynamic from "next/dynamic";
+
+const SectorMarketPulseDashboard = dynamic(
+  () => import("@/components/dashboard/sector-market-pulse/sector-market-pulse-dashboard").then((m) => m.SectorMarketPulseDashboard),
+  { loading: () => <div className="h-64 animate-pulse bg-muted/50 rounded" /> }
+);
 
 export const revalidate = 3600;
 
@@ -47,6 +54,8 @@ interface ComputedHeroStat {
 }
 
 export default async function SectorDetailPage({ params }: PageProps) {
+  preloadBulkScoringData();
+
   const { slug } = await params;
   const sector = getSectorBySlug(slug);
   if (!sector) notFound();
@@ -112,8 +121,10 @@ export default async function SectorDetailPage({ params }: PageProps) {
       };
     });
 
-    // Fetch Market Pulse dashboard data for this sector
-    dashboardData = await fetchSectorDashboardData(supabase, companies, sectorAvgRows);
+    // Build Market Pulse dashboard data from bulk scoring data (cached, no extra DB calls)
+    const bulkScoringData = await getBulkScoringData();
+    const scores = computeProspectScoresBatch(bulkScoringData);
+    dashboardData = buildSectorDashboardFromBulk(bulkScoringData, scores, sector.name);
 
     tableData = companies.map((c) => {
       const cm = metricsByCompany.get(c.id);

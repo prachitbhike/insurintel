@@ -1,4 +1,6 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import {
   type LatestMetric,
   type MetricTimeseries,
@@ -7,6 +9,7 @@ import {
   type Sector,
 } from "@/types/database";
 import { type BulkScoringData } from "@/lib/scoring/types";
+import { getReadOnlyClient } from "@/lib/supabase/server";
 
 /**
  * Paginated fetch to work around Supabase's default 1000-row limit.
@@ -14,7 +17,7 @@ import { type BulkScoringData } from "@/lib/scoring/types";
  */
 async function paginatedFetch<T>(
   queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-  pageSize = 1000
+  pageSize = 5000
 ): Promise<T[]> {
   const allData: T[] = [];
   let offset = 0;
@@ -29,10 +32,10 @@ async function paginatedFetch<T>(
   return allData;
 }
 
-export async function getLatestMetrics(
+export const getLatestMetrics = cache(async (
   supabase: SupabaseClient,
   companyId?: string
-): Promise<LatestMetric[]> {
+): Promise<LatestMetric[]> => {
   let query = supabase.from("mv_latest_metrics").select("*");
   if (companyId) {
     query = query.eq("company_id", companyId);
@@ -41,7 +44,7 @@ export async function getLatestMetrics(
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
-}
+});
 
 export async function getMetricTimeseries(
   supabase: SupabaseClient,
@@ -77,14 +80,21 @@ export async function getCompanyFinancials(
     fiscal_quarter: number | null;
   }[]
 > {
-  const { data, error } = await supabase
-    .from("financial_metrics")
+  // Use mv_metric_timeseries (pre-indexed) instead of base financial_metrics table
+  let query = supabase
+    .from("mv_metric_timeseries")
     .select("metric_name, metric_value, unit, fiscal_year, fiscal_quarter")
     .eq("company_id", companyId)
-    .eq("period_type", periodType)
     .order("fiscal_year", { ascending: false })
     .order("metric_name");
 
+  if (periodType === "annual") {
+    query = query.is("fiscal_quarter", null);
+  } else {
+    query = query.not("fiscal_quarter", "is", null);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
 }
@@ -214,73 +224,95 @@ const SCORING_METRICS = [
   "premium_growth_yoy",
 ];
 
-export async function getBulkScoringData(
-  supabase: SupabaseClient
-): Promise<BulkScoringData> {
-  const [companiesRes, latestRes, sectorAvgsRes, tsData] = await Promise.all([
-    supabase
-      .from("companies")
-      .select("id, ticker, name, sector")
-      .eq("is_active", true)
-      .order("ticker"),
-    supabase
-      .from("mv_latest_metrics")
-      .select("company_id, ticker, name, sector, metric_name, metric_value")
-      .in("metric_name", SCORING_METRICS),
-    supabase.from("mv_sector_averages").select("*"),
-    // Paginated: ~2,300 annual rows exceed Supabase default 1000-row limit
-    paginatedFetch<{
-      company_id: string;
-      metric_name: string;
-      metric_value: number;
-      fiscal_year: number;
-    }>((from, to) =>
+/**
+ * Internal: fetches bulk scoring data using the lightweight read-only client.
+ * Wrapped with unstable_cache for cross-request caching (1hr).
+ */
+const _fetchBulkScoringData = unstable_cache(
+  async (): Promise<BulkScoringData> => {
+    const supabase = getReadOnlyClient();
+
+    const [companiesRes, latestRes, sectorAvgsRes, tsData] = await Promise.all([
       supabase
-        .from("financial_metrics")
-        .select("company_id, metric_name, metric_value, fiscal_year")
+        .from("companies")
+        .select("id, ticker, name, sector")
+        .eq("is_active", true)
+        .order("ticker")
+        .returns<{ id: string; ticker: string; name: string; sector: string }[]>(),
+      supabase
+        .from("mv_latest_metrics")
+        .select("company_id, ticker, name, sector, metric_name, metric_value")
         .in("metric_name", SCORING_METRICS)
-        .eq("period_type", "annual")
-        .order("fiscal_year", { ascending: true })
-        .range(from, to)
-    ),
-  ]);
+        .returns<LatestMetric[]>(),
+      supabase.from("mv_sector_averages").select("*").returns<SectorAverage[]>(),
+      paginatedFetch<{
+        company_id: string;
+        metric_name: string;
+        metric_value: number;
+        fiscal_year: number;
+      }>((from, to) =>
+        supabase
+          .from("financial_metrics")
+          .select("company_id, metric_name, metric_value, fiscal_year")
+          .in("metric_name", SCORING_METRICS)
+          .eq("period_type", "annual")
+          .order("fiscal_year", { ascending: true })
+          .range(from, to)
+      ),
+    ]);
 
-  const companies = (companiesRes.data ?? []).map((c) => ({
-    id: c.id as string,
-    ticker: c.ticker as string,
-    name: c.name as string,
-    sector: c.sector as Sector,
-  }));
+    const companies = (companiesRes.data ?? []).map((c) => ({
+      id: c.id,
+      ticker: c.ticker,
+      name: c.name,
+      sector: c.sector as Sector,
+    }));
 
-  // Build latest metrics: companyId -> { metricName: value }
-  const latestMetrics: Record<string, Record<string, number>> = {};
-  for (const row of (latestRes.data ?? []) as LatestMetric[]) {
-    if (!latestMetrics[row.company_id]) latestMetrics[row.company_id] = {};
-    latestMetrics[row.company_id][row.metric_name] = row.metric_value;
-  }
+    const latestMetrics: Record<string, Record<string, number>> = {};
+    for (const row of latestRes.data ?? []) {
+      if (!latestMetrics[row.company_id]) latestMetrics[row.company_id] = {};
+      latestMetrics[row.company_id][row.metric_name] = row.metric_value;
+    }
 
-  // Build sector averages: sector -> { metricName: { avg, min, max } }
-  const sectorAverages: BulkScoringData["sectorAverages"] = {};
-  for (const row of (sectorAvgsRes.data ?? []) as SectorAverage[]) {
-    if (!sectorAverages[row.sector]) sectorAverages[row.sector] = {};
-    sectorAverages[row.sector][row.metric_name] = {
-      avg: row.avg_value,
-      min: row.min_value,
-      max: row.max_value,
-    };
-  }
+    const sectorAverages: BulkScoringData["sectorAverages"] = {};
+    for (const row of sectorAvgsRes.data ?? []) {
+      if (!sectorAverages[row.sector]) sectorAverages[row.sector] = {};
+      sectorAverages[row.sector][row.metric_name] = {
+        avg: row.avg_value,
+        min: row.min_value,
+        max: row.max_value,
+      };
+    }
 
-  // Build timeseries: companyId -> { metricName: [{ fiscal_year, value }] }
-  const timeseries: BulkScoringData["timeseries"] = {};
-  for (const row of tsData) {
-    const cid = row.company_id as string;
-    if (!timeseries[cid]) timeseries[cid] = {};
-    if (!timeseries[cid][row.metric_name]) timeseries[cid][row.metric_name] = [];
-    timeseries[cid][row.metric_name].push({
-      fiscal_year: row.fiscal_year,
-      value: row.metric_value,
-    });
-  }
+    const timeseries: BulkScoringData["timeseries"] = {};
+    for (const row of tsData) {
+      const cid = row.company_id as string;
+      if (!timeseries[cid]) timeseries[cid] = {};
+      if (!timeseries[cid][row.metric_name]) timeseries[cid][row.metric_name] = [];
+      timeseries[cid][row.metric_name].push({
+        fiscal_year: row.fiscal_year,
+        value: row.metric_value,
+      });
+    }
 
-  return { companies, latestMetrics, sectorAverages, timeseries };
+    return { companies, latestMetrics, sectorAverages, timeseries };
+  },
+  ["bulk-scoring-data"],
+  { revalidate: 3600, tags: ["scoring-data"] }
+);
+
+/**
+ * Get bulk scoring data. Cached across requests (1hr) via unstable_cache,
+ * and deduplicated within a single request via React cache().
+ * The `supabase` parameter is kept for API compatibility but ignored
+ * (the cached function uses its own read-only client internally).
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getBulkScoringData = cache(async (_supabase?: SupabaseClient): Promise<BulkScoringData> => {
+  return _fetchBulkScoringData();
+});
+
+/** Eagerly start fetching bulk scoring data (call at top of page components). */
+export function preloadBulkScoringData() {
+  void getBulkScoringData();
 }

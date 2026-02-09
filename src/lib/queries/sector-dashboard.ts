@@ -189,7 +189,7 @@ export function buildSectorDashboardFromBulk(
 
 async function paginatedFetch<T>(
   queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-  pageSize = 1000
+  pageSize = 5000
 ): Promise<T[]> {
   const allData: T[] = [];
   let offset = 0;

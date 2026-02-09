@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
-import { getBulkScoringData } from "@/lib/queries/metrics";
+import { getBulkScoringData, preloadBulkScoringData } from "@/lib/queries/metrics";
 import { computeProspectScoresBatch } from "@/lib/scoring";
 import { type HeroMetric } from "@/components/dashboard/hero-benchmarks-v2";
 import { getSectorBySlug, type SectorInfo } from "@/lib/data/sectors";
@@ -10,8 +9,7 @@ export const revalidate = 3600;
 
 async function getOverviewData() {
   try {
-    const supabase = await createClient();
-    const bulkScoringData = await getBulkScoringData(supabase);
+    const bulkScoringData = await getBulkScoringData();
 
     // Compute prospect scores
     const scores = computeProspectScoresBatch(bulkScoringData);
@@ -103,6 +101,8 @@ interface HomePageProps {
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
+  preloadBulkScoringData();
+
   const params = await searchParams;
   const sectorSlug = params.sector ?? "p-and-c";
   const activeSector = getSectorBySlug(sectorSlug) ?? null;

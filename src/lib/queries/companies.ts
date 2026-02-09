@@ -1,9 +1,10 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
+import { cache } from "react";
 import { type Company } from "@/types/database";
 
-export async function getAllCompanies(
+export const getAllCompanies = cache(async (
   supabase: SupabaseClient
-): Promise<Company[]> {
+): Promise<Company[]> => {
   const { data, error } = await supabase
     .from("companies")
     .select("*")
@@ -12,12 +13,12 @@ export async function getAllCompanies(
 
   if (error) throw error;
   return data ?? [];
-}
+});
 
-export async function getCompanyByTicker(
+export const getCompanyByTicker = cache(async (
   supabase: SupabaseClient,
   ticker: string
-): Promise<Company | null> {
+): Promise<Company | null> => {
   const { data, error } = await supabase
     .from("companies")
     .select("*")
@@ -29,7 +30,7 @@ export async function getCompanyByTicker(
     throw error;
   }
   return data;
-}
+});
 
 export async function searchCompanies(
   supabase: SupabaseClient,

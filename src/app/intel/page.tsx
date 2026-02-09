@@ -1,7 +1,6 @@
 import { type Metadata } from "next";
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { getBulkScoringData } from "@/lib/queries/metrics";
+import { getBulkScoringData, preloadBulkScoringData } from "@/lib/queries/metrics";
 import { computeProspectScoresBatch } from "@/lib/scoring/prospect-score";
 import { computeBestTamPerCompany } from "@/lib/scoring/tam-calculator";
 import { OpportunitiesClient } from "@/components/opportunities/opportunities-client";
@@ -20,8 +19,7 @@ async function OpportunitiesContent() {
   let rows: ProspectRow[] = [];
 
   try {
-    const supabase = await createClient();
-    const scoringData = await getBulkScoringData(supabase);
+    const scoringData = await getBulkScoringData();
     const prospectScores = computeProspectScoresBatch(scoringData);
 
     const scoreMap = new Map(prospectScores.map((s) => [s.companyId, s]));
@@ -58,6 +56,7 @@ async function OpportunitiesContent() {
 }
 
 export default function OpportunitiesPage() {
+  preloadBulkScoringData();
   return (
     <div className="container px-4 py-8 md:px-6">
       <div className="mb-6">
