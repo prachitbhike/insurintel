@@ -21,7 +21,6 @@ export interface ProspectScoreResult {
   painIntensity: number | null;
   abilityToPay: number | null;
   urgency: number | null;
-  scaleFit: number | null;
   painMetricName: string | null;
   painMetricValue: number | null;
   painVsSectorAvg: number | null;

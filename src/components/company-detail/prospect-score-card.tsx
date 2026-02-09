@@ -4,10 +4,9 @@ import { formatCurrency } from "@/lib/metrics/formatters";
 import { cn } from "@/lib/utils";
 
 const SCORE_SEGMENTS = [
-  { key: "painIntensity" as const, label: "Pain", color: "bg-rose-500", weight: "40%" },
+  { key: "painIntensity" as const, label: "Pain", color: "bg-rose-500", weight: "50%" },
   { key: "abilityToPay" as const, label: "Budget", color: "bg-sky-500", weight: "20%" },
-  { key: "urgency" as const, label: "Urgency", color: "bg-yellow-500", weight: "25%" },
-  { key: "scaleFit" as const, label: "Scale Fit", color: "bg-violet-500", weight: "15%" },
+  { key: "urgency" as const, label: "Urgency", color: "bg-yellow-500", weight: "30%" },
 ];
 
 function tierColor(score: number): string {
@@ -38,14 +37,6 @@ function getSegmentExplanation(
       return ps.trendDirection
         ? `${ps.trendDirection} trend`
         : null;
-    case "scaleFit": {
-      if (ps.revenueBase != null) {
-        if (ps.revenueBase >= 50e9) return "large-cap carrier";
-        if (ps.revenueBase >= 5e9) return "$5B\u2013$50B range";
-        return "smaller-scale";
-      }
-      return null;
-    }
     default:
       return null;
   }
@@ -90,7 +81,7 @@ export function ProspectScoreCard({ prospectScore }: ProspectScoreCardProps) {
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-5">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-3">
           {SCORE_SEGMENTS.map((seg) => {
             const value = prospectScore[seg.key];
             if (value == null) return null;

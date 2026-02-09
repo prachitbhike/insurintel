@@ -74,29 +74,25 @@ export default function OpportunitiesPage() {
           </summary>
           <div className="mt-2 space-y-2 text-xs leading-relaxed border-l-2 border-muted pl-3">
             <p>
-              The efficiency score (0-100) is a weighted composite of four dimensions, normalized within each sector:
+              The efficiency score (0-100) is a weighted composite of three dimensions, normalized within each sector:
             </p>
             <ul className="list-disc pl-4 space-y-1">
               <li>
-                <span className="font-medium">Operational gap (40%)</span> — How far the company{"'"}s key metric
+                <span className="font-medium">Operational gap (50%)</span> — How far the company{"'"}s key metric
                 (combined ratio for P&C/Re, MLR for Health, ROE for Life, D/E for Brokers) deviates from sector
                 peers, using min-max normalization.
               </li>
               <li>
-                <span className="font-medium">Trend (25%)</span> — 3-year linear slope of the key metric and ROE.
+                <span className="font-medium">Trend (30%)</span> — 3-year linear slope of the key metric and ROE.
                 A worsening trend scores higher. Threshold: {">"}0.5pp/year = worsening, {"<"}-0.5pp/year = improving.
               </li>
               <li>
                 <span className="font-medium">Revenue scale (20%)</span> — Net premiums earned or revenue,
                 linearly scaled from $0 (score 0) to $100B+ (score 100).
               </li>
-              <li>
-                <span className="font-medium">Size fit (15%)</span> — Log-normal curve centered at ~$20B revenue.
-                Mid-size companies score highest.
-              </li>
             </ul>
             <p>
-              Requires at least 2 of 4 dimensions to produce a score.
+              Requires at least 2 of 3 dimensions to produce a score.
               Missing dimensions are redistributed proportionally across available ones.
             </p>
             <p>

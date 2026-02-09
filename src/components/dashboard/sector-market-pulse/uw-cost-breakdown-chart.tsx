@@ -38,8 +38,14 @@ interface CostBreakdownItem {
   ticker: string;
   name: string;
   premiums: number;
+  /** Actual loss costs (for tooltip) */
   lossCosts: number;
+  /** Actual expense costs (for tooltip) */
   expenseCosts: number;
+  /** Capped loss costs for stacking (fills first up to premiums) */
+  displayLossCosts: number;
+  /** Capped expense costs for stacking (fills remaining room up to premiums) */
+  displayExpenseCosts: number;
   uwResult: number;
   uwResultPositive: number;
   uwResultNegative: number;
@@ -50,11 +56,11 @@ interface CostBreakdownItem {
 }
 
 const chartConfig = {
-  lossCosts: {
+  displayLossCosts: {
     label: "Loss Costs",
     color: "hsl(220 70% 50%)",
   },
-  expenseCosts: {
+  displayExpenseCosts: {
     label: "Expense Costs",
     color: "hsl(220 50% 70%)",
   },
@@ -161,15 +167,33 @@ export function UWCostBreakdownChart({
         const expenseCosts = expenseRatio != null ? (expenseRatio / 100) * premiums : 0;
         const uwResult = premiums - lossCosts - expenseCosts;
 
+        // Actual values for tooltip
+        const actualLossCosts = hasNegativeLoss && allowNegativeLoss ? 0 : Math.max(0, lossCosts);
+        const actualExpenseCosts = expenseCosts;
+
+        // Capped display values for stacking so segments don't double-count.
+        // Loss fills first (up to premiums), expense fills remaining room,
+        // UW loss (red) extends beyond premiums as the overshoot.
+        const isLoss = uwResult < 0;
+        let displayLoss = actualLossCosts;
+        let displayExpense = actualExpenseCosts;
+
+        if (isLoss) {
+          displayLoss = Math.min(actualLossCosts, premiums);
+          displayExpense = Math.max(0, Math.min(actualExpenseCosts, premiums - displayLoss));
+        }
+
         return {
           ticker: c.ticker,
           name: c.name,
           premiums,
-          lossCosts: hasNegativeLoss && allowNegativeLoss ? 0 : Math.max(0, lossCosts),
-          expenseCosts,
+          lossCosts: actualLossCosts,
+          expenseCosts: actualExpenseCosts,
+          displayLossCosts: displayLoss,
+          displayExpenseCosts: displayExpense,
           uwResult,
           uwResultPositive: uwResult >= 0 ? uwResult : 0,
-          uwResultNegative: uwResult < 0 ? Math.abs(uwResult) : 0,
+          uwResultNegative: isLoss ? Math.abs(uwResult) : 0,
           lossRatio,
           expenseRatio,
           hasNegativeLoss,
@@ -303,13 +327,13 @@ export function UWCostBreakdownChart({
             />
             <ChartTooltip content={<CustomTooltip allowNegativeLoss={allowNegativeLoss} />} />
             <Bar
-              dataKey="lossCosts"
+              dataKey="displayLossCosts"
               stackId="costs"
               fill="hsl(220 70% 50%)"
               radius={[0, 0, 0, 0]}
             />
             <Bar
-              dataKey="expenseCosts"
+              dataKey="displayExpenseCosts"
               stackId="costs"
               fill="hsl(220 50% 70%)"
               radius={[0, 0, 0, 0]}
@@ -332,7 +356,7 @@ export function UWCostBreakdownChart({
             </Bar>
             <Bar
               dataKey="uwResultNegative"
-              stackId="uw-loss"
+              stackId="costs"
               radius={[0, 4, 4, 0]}
             >
               {data.map((entry) => (

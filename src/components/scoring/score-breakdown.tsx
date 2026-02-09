@@ -17,14 +17,14 @@ const SEGMENTS = [
     label: "Pain",
     color: "bg-rose-500",
     tooltip: "How far above sector average on key pain metrics",
-    weight: 40,
+    weight: 50,
   },
   {
     key: "urgency" as const,
     label: "Urgency",
     color: "bg-yellow-500",
     tooltip: "Worsening trend (3yr slope of pain metric + ROE)",
-    weight: 25,
+    weight: 30,
   },
   {
     key: "abilityToPay" as const,
@@ -32,13 +32,6 @@ const SEGMENTS = [
     color: "bg-sky-500",
     tooltip: "Revenue / premiums as budget proxy",
     weight: 20,
-  },
-  {
-    key: "scaleFit" as const,
-    label: "Scale Fit",
-    color: "bg-violet-500",
-    tooltip: "Gaussian score favoring mid-range revenue companies",
-    weight: 15,
   },
 ];
 

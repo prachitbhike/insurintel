@@ -6,10 +6,9 @@ import {
 } from "./types";
 
 const WEIGHTS = {
-  painIntensity: 0.4,
+  painIntensity: 0.5,
   abilityToPay: 0.2,
-  urgency: 0.25,
-  scaleFit: 0.15,
+  urgency: 0.3,
 };
 
 /** Pain metrics by sector — higher values indicate more pain */
@@ -77,7 +76,6 @@ export function computeProspectScore(
     painIntensity: null,
     abilityToPay: null,
     urgency: null,
-    scaleFit: null,
     painMetricName: null,
     painMetricValue: null,
     painVsSectorAvg: null,
@@ -88,7 +86,7 @@ export function computeProspectScore(
   const painConfigs = PAIN_METRICS[sector] ?? [];
   const dimensions: { name: keyof typeof WEIGHTS; score: number }[] = [];
 
-  // 1. Pain Intensity (40%)
+  // 1. Pain Intensity (50%)
   let bestPainScore = -1;
   for (const { metric, invert } of painConfigs) {
     const val = metrics[metric];
@@ -117,7 +115,7 @@ export function computeProspectScore(
     dimensions.push({ name: "painIntensity", score: bestPainScore });
   }
 
-  // 2. Ability to Pay (20%) — revenue/premiums as budget proxy
+  // 2. Ability to Pay (20%)
   const revenueMetrics = ["net_premiums_earned", "revenue"];
   let revenue: number | null = null;
   for (const m of revenueMetrics) {
@@ -134,7 +132,7 @@ export function computeProspectScore(
     dimensions.push({ name: "abilityToPay", score: payScore });
   }
 
-  // 3. Urgency (25%) — worsening trend in pain metric + ROE
+  // 3. Urgency (30%) — worsening trend in pain metric + ROE
   const trendMetrics: string[] = [];
   if (result.painMetricName) trendMetrics.push(result.painMetricName);
   trendMetrics.push("roe");
@@ -168,17 +166,6 @@ export function computeProspectScore(
     if (avgSlope > 0.5) result.trendDirection = "worsening";
     else if (avgSlope < -0.5) result.trendDirection = "improving";
     else result.trendDirection = "stable";
-  }
-
-  // 4. Scale Fit (15%) — mid-range companies score highest
-  if (revenue != null) {
-    // Sweet spot: $5B-$50B — bell curve centered at ~$20B
-    const logRev = Math.log10(Math.max(revenue, 1));
-    const center = 10.3; // log10(20B)
-    const spread = 0.8;
-    const scaleScore = Math.exp(-Math.pow(logRev - center, 2) / (2 * spread * spread)) * 100;
-    result.scaleFit = Math.round(scaleScore);
-    dimensions.push({ name: "scaleFit", score: scaleScore });
   }
 
   // Compute total: weighted average with proportional redistribution for missing

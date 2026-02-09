@@ -70,12 +70,11 @@ export function ScoreBadge({ score, size = "md", className }: ScoreBadgeProps) {
         <TooltipContent side="top" className="max-w-xs">
           <div className="text-xs space-y-1">
             <p className="font-medium">Efficiency Score (0-100)</p>
-            <p>Weighted composite of four dimensions:</p>
+            <p>Weighted composite of three dimensions:</p>
             <ul className="list-disc pl-3.5 space-y-0.5">
-              <li>Operational gap vs. sector peers (40%)</li>
-              <li>Trend direction over 3 years (25%)</li>
+              <li>Operational gap vs. sector peers (50%)</li>
+              <li>Trend direction over 3 years (30%)</li>
               <li>Revenue scale (20%)</li>
-              <li>Company size fit (15%)</li>
             </ul>
             <p className="text-muted-foreground">70+ = High, 40-69 = Mid, &lt;40 = Low</p>
           </div>
