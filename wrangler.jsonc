@@ -7,5 +7,9 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }
+  },
+  "routes": [
+    { "pattern": "insurintel.xyz", "custom_domain": true },
+    { "pattern": "www.insurintel.xyz", "custom_domain": true }
+  ]
 }
